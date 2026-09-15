@@ -133,6 +133,7 @@ async function verifierRognage(page, largeur, hauteur) {
   assert.ok(r.defilement[0] <= largeur && r.defilement[1] <= hauteur, "la page défile");
   const carre = r.formes[0];
   assert.ok(Math.abs(carre.width - carre.height) < 1, "la plaque n'est pas carrée");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById("centre")).borderTopWidth), "0px", "la plaque ne doit pas avoir de cadre");
   assert.ok(carre.bottom <= r.plateau.bottom + 0.5 && carre.top >= r.plateau.top - 0.5);
 }
 
@@ -262,7 +263,7 @@ test("barre du père : retour, hasard, e-ink (mémorisé), raccourcis clavier", 
   await page.click("#bouton-eink");
   const eink = await page.evaluate(() => ({
     classe: document.documentElement.classList.contains("eink"),
-    contour: getComputedStyle(document.getElementById("centre")).borderTopWidth,
+    contour: getComputedStyle(document.getElementById("coin-1")).borderTopWidth,
     voile: getComputedStyle(document.getElementById("plateau"), "::after").mixBlendMode,
     memo: localStorage.getItem("motamot.eink"),
   }));

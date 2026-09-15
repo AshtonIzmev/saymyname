@@ -94,12 +94,16 @@ body {
   background: #fff;
   border: var(--contour) solid #000;
 }
-/* Carré au centre, cercles aux coins : c'est cette différence de forme, et non
-   une couleur ou un texte, qui dit à l'enfant où est le moyeu. */
+/* Au centre, l'image seule, sans cadre, aussi grande que la ligne le permet ;
+   aux coins, des cercles cernés. C'est cette différence — nue et grande contre
+   petite et cerclée — et non une couleur ou un texte, qui dit à l'enfant où est
+   le moyeu. La plaque reste une boîte carrée invisible : elle dimensionne
+   l'image et sert d'ancre aux fils. */
 .plaque {
   width: var(--cote);
   height: var(--cote);
-  border-radius: 12px;
+  border: 0;
+  border-radius: 0;
 }
 .cercle {
   width: var(--diametre);
@@ -114,14 +118,14 @@ body {
   line-height: 1;
   font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }
-.plaque .glyphe { font-size: calc(var(--cote) * 0.62); }
+.plaque .glyphe { font-size: calc(var(--cote) * 0.9); }
 .cercle .glyphe { font-size: calc(var(--diametre) * 0.66); }
 .forme img {
   display: block;
   object-fit: contain;
   pointer-events: none;
 }
-.plaque img { width: 65%; height: 65%; }
+.plaque img { width: 90%; height: 90%; }
 .cercle img { width: 70%; height: 70%; }
 
 /* Retour tactile : inversion binaire tant que le doigt est posé. Un voile blanc
