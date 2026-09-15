@@ -133,7 +133,8 @@ async function verifierRognage(page, largeur, hauteur) {
   assert.ok(r.defilement[0] <= largeur && r.defilement[1] <= hauteur, "la page défile");
   const carre = r.formes[0];
   assert.ok(Math.abs(carre.width - carre.height) < 1, "la plaque n'est pas carrée");
-  assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById("centre")).borderTopWidth), "0px", "la plaque ne doit pas avoir de cadre");
+  const cadres = await page.evaluate(() => [...document.querySelectorAll("#plateau .forme")].map((f) => getComputedStyle(f).borderTopWidth));
+  assert.deepEqual(cadres, ["0px", "0px", "0px", "0px", "0px"], "aucune forme ne doit avoir de cadre");
   assert.ok(carre.bottom <= r.plateau.bottom + 0.5 && carre.top >= r.plateau.top - 0.5);
 }
 
@@ -263,11 +264,11 @@ test("barre du père : retour, hasard, e-ink (mémorisé), raccourcis clavier", 
   await page.click("#bouton-eink");
   const eink = await page.evaluate(() => ({
     classe: document.documentElement.classList.contains("eink"),
-    contour: getComputedStyle(document.getElementById("coin-1")).borderTopWidth,
+    fil: getComputedStyle(document.getElementById("fil-1")).strokeWidth,
     voile: getComputedStyle(document.getElementById("plateau"), "::after").mixBlendMode,
     memo: localStorage.getItem("motamot.eink"),
   }));
-  assert.deepEqual(eink, { classe: true, contour: "6px", voile: "saturation", memo: "1" });
+  assert.deepEqual(eink, { classe: true, fil: "3px", voile: "saturation", memo: "1" });
   await verifierFils(page);
   await page.reload();
   await page.waitForFunction(() => window.motAMot && window.motAMot.etat);

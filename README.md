@@ -14,7 +14,7 @@ Ouvrir `index.html` dans un navigateur. Un seul fichier, sans build, sans résea
 depuis un `file://`. Sur la liseuse : WebView ou Chromium en plein écran / kiosque.
 
 Commandes du parent (barre du bas) : **Retour** (historique), **Au hasard**,
-**E-ink** (aperçu : blanc pur, noir pur, aplats sans teinte, contours épaissis).
+**E-ink** (aperçu : blanc pur, noir pur, aplats sans teinte, fils épaissis).
 Le réglage e-ink est mémorisé si le stockage local le permet ; sinon tout
 fonctionne quand même.
 
@@ -78,8 +78,8 @@ revoir (une étiquette posée sur trop de notions crée un aimant), pas l'algori
 ## Rendu e-ink
 
 Le CSS s'interdit toute transition, animation, ombre, dégradé, filtre, `:hover`
-et opacité partielle. Contours ≥ 4 px, traits ≥ 2 px, aucun gris entre `#666` et
-`#AAA`. Le retour tactile est une inversion binaire tant que le doigt est posé.
+et opacité partielle. Aucun cadre autour des images ; traits ≥ 2 px ; aucun gris
+entre `#666` et `#AAA`. Le retour tactile est une inversion binaire tant que le doigt est posé.
 
 Purge du ghosting : `motAMot.purgerDalle()` affiche une frame de noir plein
 écran. Pour l'appeler automatiquement toutes les N navigations, passer

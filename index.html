@@ -6,12 +6,11 @@
 <title>Mot à Mot</title>
 <style>
 /* ------------------------------------------------------------------------
-   Contraintes e-ink (voir README) : aplats pleins, contours ≥ 4 px, aucun
-   trait sous 2 px, aucun gris entre #666 et #AAA, aucune animation, aucune
-   ombre, aucun dégradé, aucun :hover. Tout ce qui suit s'y tient.
+   Contraintes e-ink (voir README) : aplats pleins, aucun trait sous 2 px,
+   aucun gris entre #666 et #AAA, aucune animation, aucune ombre, aucun
+   dégradé, aucun :hover. Tout ce qui suit s'y tient.
    ------------------------------------------------------------------------ */
 :root {
-  --contour: 4px;            /* contour des formes du plateau */
   --fil: 2px;                /* épaisseur des fils pointillés */
   --barre: 48px;             /* hauteur de la barre du père */
   --diametre: 20vmin;        /* cercles : 20 % du plus petit côté de l'écran */
@@ -21,8 +20,8 @@
      de conteneur pour tourner sur les WebView anciennes des liseuses. */
   --cote: min(calc(100vw * 1.6 / 3.6), calc((100vh - var(--barre)) / 2));
 }
-/* L'aperçu e-ink épaissit les traits : c'est ce que fait, en pratique, la dalle. */
-html.eink { --contour: 6px; --fil: 3px; }
+/* L'aperçu e-ink épaissit les fils : c'est ce que fait, en pratique, la dalle. */
+html.eink { --fil: 3px; }
 
 html, body {
   margin: 0;
@@ -92,17 +91,16 @@ body {
   align-items: center;
   justify-content: center;
   background: #fff;
-  border: var(--contour) solid #000;
+  border: 0;
 }
-/* Au centre, l'image seule, sans cadre, aussi grande que la ligne le permet ;
-   aux coins, des cercles cernés. C'est cette différence — nue et grande contre
-   petite et cerclée — et non une couleur ou un texte, qui dit à l'enfant où est
-   le moyeu. La plaque reste une boîte carrée invisible : elle dimensionne
-   l'image et sert d'ancre aux fils. */
+/* Aucun cadre, ni au centre ni aux coins : les images seules, la grande au
+   milieu, les quatre petites autour, reliées par les fils. C'est la taille et
+   la position — pas une couleur, pas un texte — qui disent où est le moyeu.
+   Les boîtes restent : la plaque carrée dimensionne l'image et ancre les fils ;
+   le cercle est la cible tactile et la zone qui s'inverse à l'appui. */
 .plaque {
   width: var(--cote);
   height: var(--cote);
-  border: 0;
   border-radius: 0;
 }
 .cercle {
@@ -131,8 +129,8 @@ body {
 /* Retour tactile : inversion binaire tant que le doigt est posé. Un voile blanc
    en mode « différence » inverse fond, image et tout ce qui est dessous sans
    fondu ni échelle — et sans recourir à un filtre d'image, proscrit ici.
-   Le contour, hors de la boîte de remplissage, reste noir : le cercle devient
-   un disque plein noir, lisible même sur une dalle lente. */
+   Le cercle, sans cadre au repos, devient un disque plein noir : lisible même
+   sur une dalle lente. */
 .cercle.presse::after {
   content: "";
   position: absolute;
