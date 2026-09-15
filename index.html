@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Mot à Mot</title>
+<style>
+/* ------------------------------------------------------------------------
+   Contraintes e-ink (voir README) : aplats pleins, contours ≥ 4 px, aucun
+   trait sous 2 px, aucun gris entre #666 et #AAA, aucune animation, aucune
+   ombre, aucun dégradé, aucun :hover. Tout ce qui suit s'y tient.
+   ------------------------------------------------------------------------ */
+:root {
+  --contour: 4px;            /* contour des formes du plateau */
+  --fil: 2px;                /* épaisseur des fils pointillés */
+  --barre: 48px;             /* hauteur de la barre du père */
+  --diametre: 20vmin;        /* cercles : 20 % du plus petit côté de l'écran */
+  /* Côté de la plaque centrale : la hauteur de la ligne du milieu (2/4 du
+     plateau), plafonnée par la largeur de la colonne du milieu (1.6/3.6) pour
+     rester carrée en portrait. Exprimé en unités de fenêtre plutôt qu'en unités
+     de conteneur pour tourner sur les WebView anciennes des liseuses. */
+  --cote: min(calc(100vw * 1.6 / 3.6), calc((100vh - var(--barre)) / 2));
+}
+/* L'aperçu e-ink épaissit les traits : c'est ce que fait, en pratique, la dalle. */
+html.eink { --contour: 6px; --fil: 3px; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  font: 13px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------- Le plateau : à l'enfant, immense et muet ---------- */
+#plateau {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  grid-template-rows: 1fr 2fr 1fr;
+  /* Fond posé ici et non hérité du body : le voile de l'aperçu e-ink se mélange
+     avec le contenu de ce groupe isolé, il lui faut donc un fond opaque. */
+  background: #fff;
+  isolation: isolate;
+}
+#fils {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#fils line {
+  stroke: #000;
+  stroke-width: var(--fil);
+  stroke-dasharray: 3 9;
+  stroke-linecap: butt;
+}
+.case {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+#case-centre { grid-area: 2 / 2; }
+#case-1 { grid-area: 1 / 1; }
+#case-2 { grid-area: 1 / 3; }
+#case-3 { grid-area: 3 / 1; }
+#case-4 { grid-area: 3 / 3; }
+
+.forme {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: var(--contour) solid #000;
+}
+/* Carré au centre, cercles aux coins : c'est cette différence de forme, et non
+   une couleur ou un texte, qui dit à l'enfant où est le moyeu. */
+.plaque {
+  width: var(--cote);
+  height: var(--cote);
+  border-radius: 12px;
+}
+.cercle {
+  width: var(--diametre);
+  height: var(--diametre);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Une image = un glyphe (emoji provisoire) ou une <img> (illustration finale). */
+.glyphe {
+  display: block;
+  line-height: 1;
+  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+.plaque .glyphe { font-size: calc(var(--cote) * 0.62); }
+.cercle .glyphe { font-size: calc(var(--diametre) * 0.66); }
+.forme img {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+.plaque img { width: 65%; height: 65%; }
+.cercle img { width: 70%; height: 70%; }
+
+/* Retour tactile : inversion binaire tant que le doigt est posé. Un voile blanc
+   en mode « différence » inverse fond, image et tout ce qui est dessous sans
+   fondu ni échelle — et sans recourir à un filtre d'image, proscrit ici.
+   Le contour, hors de la boîte de remplissage, reste noir : le cercle devient
+   un disque plein noir, lisible même sur une dalle lente. */
+.cercle.presse::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+/* Aperçu e-ink : un voile noir en mode « saturation » retire toute teinte au
+   plateau (le noir a une saturation nulle) et laisse la luminosité intacte.
+   Ce n'est pas un rendu Kaleido exact, mais c'est le même sens de perte. */
+html.eink #plateau::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  mix-blend-mode: saturation;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Voile pour purger le ghosting : une frame de noir plein écran, à la demande. */
+#voile {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  z-index: 100;
+}
+#voile[hidden] { display: none; }
+
+/* ---------- La barre du père : fine, basse, inintéressante ---------- */
+#barre {
+  flex: 0 0 var(--barre);
+  height: var(--barre);
+  box-sizing: border-box;
+  border-top: 2px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #fff;
+}
+#barre button {
+  font: inherit;
+  color: #000;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 0 14px;
+  height: 32px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#barre button:active,
+#barre button[aria-pressed="true"] { background: #000; color: #fff; }
+/* Gris clair hors de la plage #666–#AAA qui trame mal. */
+#barre button:disabled { color: #C8C8C8; border-color: #C8C8C8; background: #fff; }
+</style>
+</head>
+<body>
+
+<div id="plateau" oncontextmenu="return false">
+  <svg id="fils" aria-hidden="true">
+    <line id="fil-1"></line><line id="fil-2"></line>
+    <line id="fil-3"></line><line id="fil-4"></line>
+  </svg>
+  <div class="case" id="case-1"><div class="forme cercle" id="coin-1" data-coin="0"></div></div>
+  <div class="case" id="case-2"><div class="forme cercle" id="coin-2" data-coin="1"></div></div>
+  <div class="case" id="case-centre"><div class="forme plaque" id="centre"></div></div>
+  <div class="case" id="case-3"><div class="forme cercle" id="coin-3" data-coin="2"></div></div>
+  <div class="case" id="case-4"><div class="forme cercle" id="coin-4" data-coin="3"></div></div>
+</div>
+
+<div id="barre">
+  <button type="button" id="bouton-retour" disabled>Retour</button>
+  <button type="button" id="bouton-hasard">Au hasard</button>
+  <button type="button" id="bouton-eink" aria-pressed="false">E-ink</button>
+</div>
+
+<div id="voile" hidden></div>
+
+<!-- ====================================================================
+     DONNÉES. Une notion = une ligne : [ image, identifiant, famille, étiquettes ].
+     - image : un emoji (provisoire) ou un chemin (« img/chien.webp »).
+     - identifiant : jamais affiché ; sert aux tests et aux journaux.
+     - famille : animal | fruit | legume | objet | nature.
+     - étiquettes : 3 à 6, prises exclusivement dans VOCABULAIRE ci-dessous.
+     Ajouter une notion = ajouter une ligne. Rien d'autre.
+     ==================================================================== -->
+<script id="donnees">
+const VOCABULAIRE = {
+  forme:   ["rond", "long", "plat", "petit", "grand"],
+  couleur: ["rouge", "orange", "jaune", "vert", "bleu", "blanc", "noir", "brun", "rose", "gris"],
+  lieu:    ["maison", "cuisine", "chambre", "bain", "jardin", "ferme", "mer", "jungle", "route", "sable"],
+  usage:   ["mange", "boit", "joue", "porte", "roule", "vole", "nage", "pousse", "coupe", "assis"],
+  trait:   ["poil", "plumes", "ailes", "pattes", "queue", "sucre", "croque", "froid", "chaud", "jour", "nuit"],
+};
+const FAMILLES = ["animal", "fruit", "legume", "objet", "nature"];
+
+const NOTIONS = [
+  // ---- animaux ----
+  ["🐕", "chien",      "animal", ["poil", "pattes", "queue", "maison", "brun"]],
+  ["🐈", "chat",       "animal", ["poil", "queue", "maison", "assis", "gris"]],
+  ["🐄", "vache",      "animal", ["pattes", "queue", "ferme", "grand", "blanc", "noir"]],
+  ["🐖", "cochon",     "animal", ["pattes", "ferme", "rose", "rond", "mange"]],
+  ["🐑", "mouton",     "animal", ["poil", "pattes", "ferme", "blanc", "froid"]],
+  ["🐓", "coq",        "animal", ["plumes", "ailes", "ferme", "rouge", "jour"]],
+  ["🐔", "poule",      "animal", ["plumes", "ailes", "pattes", "ferme", "brun"]],
+  ["🐥", "poussin",    "animal", ["plumes", "petit", "jaune", "ferme"]],
+  ["🐴", "cheval",     "animal", ["poil", "pattes", "queue", "ferme", "grand", "porte"]],
+  ["🐰", "lapin",      "animal", ["poil", "pattes", "petit", "jardin", "blanc", "croque"]],
+  ["🐭", "souris",     "animal", ["poil", "queue", "petit", "gris", "maison", "croque"]],
+  ["🐦", "oiseau",     "animal", ["plumes", "ailes", "vole", "petit", "jardin", "jour"]],
+  ["🦆", "canard",     "animal", ["plumes", "ailes", "nage", "jaune", "ferme"]],
+  ["🐟", "poisson",    "animal", ["nage", "mer", "bleu", "petit", "froid"]],
+  ["🐢", "tortue",     "animal", ["pattes", "vert", "mer", "rond", "sable"]],
+  ["🐸", "grenouille", "animal", ["vert", "pattes", "nage", "petit", "jardin"]],
+  ["🐝", "abeille",    "animal", ["ailes", "vole", "petit", "jaune", "noir", "sucre"]],
+  ["🦋", "papillon",   "animal", ["ailes", "vole", "petit", "jardin", "jour", "orange"]],
+  ["🐌", "escargot",   "animal", ["petit", "jardin", "rond", "brun", "froid"]],
+  ["🐘", "elephant",   "animal", ["grand", "gris", "pattes", "jungle", "long", "boit"]],
+  ["🦒", "girafe",     "animal", ["grand", "long", "pattes", "jungle", "jaune", "brun"]],
+  ["🦁", "lion",       "animal", ["poil", "pattes", "queue", "jungle", "jaune", "chaud"]],
+  ["🐯", "tigre",      "animal", ["poil", "pattes", "queue", "jungle", "orange", "noir"]],
+  ["🐒", "singe",      "animal", ["poil", "queue", "jungle", "brun", "joue", "mange"]],
+  ["🐻", "ours",       "animal", ["poil", "pattes", "grand", "brun", "chambre", "sucre"]],
+  ["🐼", "panda",      "animal", ["poil", "pattes", "blanc", "noir", "jungle", "assis"]],
+  ["🦓", "zebre",      "animal", ["pattes", "queue", "blanc", "noir", "jungle", "grand"]],
+  ["🐬", "dauphin",    "animal", ["nage", "mer", "gris", "long", "joue"]],
+  ["🐙", "pieuvre",    "animal", ["mer", "nage", "rose", "long", "pattes"]],
+  ["🦀", "crabe",      "animal", ["mer", "sable", "pattes", "rouge", "petit", "coupe"]],
+  ["🐧", "pingouin",   "animal", ["plumes", "nage", "froid", "blanc", "noir", "mer"]],
+  // ---- fruits ----
+  ["🍎", "pomme",      "fruit", ["rond", "rouge", "croque", "jardin", "mange"]],
+  ["🍌", "banane",     "fruit", ["long", "jaune", "sucre", "jungle"]],
+  ["🍊", "orange",     "fruit", ["rond", "orange", "boit", "sucre"]],
+  ["🍓", "fraise",     "fruit", ["petit", "rouge", "sucre", "jardin", "rose"]],
+  ["🍇", "raisin",     "fruit", ["petit", "rond", "sucre", "boit", "vert"]],
+  ["🍐", "poire",      "fruit", ["vert", "sucre", "croque", "jardin", "brun"]],
+  ["🍒", "cerise",     "fruit", ["petit", "rond", "rouge", "sucre"]],
+  ["🍋", "citron",     "fruit", ["jaune", "rond", "boit", "froid", "cuisine"]],
+  ["🍉", "pasteque",   "fruit", ["grand", "rond", "vert", "rouge", "froid", "mange"]],
+  ["🍑", "peche",      "fruit", ["rond", "orange", "sucre", "rose", "poil"]],
+  ["🥝", "kiwi",       "fruit", ["petit", "vert", "brun", "croque", "poil"]],
+  ["🍍", "ananas",     "fruit", ["grand", "jaune", "sucre", "boit", "jungle"]],
+  // ---- légumes ----
+  ["🥕", "carotte",    "legume", ["long", "orange", "croque", "jardin", "pousse"]],
+  ["🍅", "tomate",     "legume", ["rond", "rouge", "cuisine", "jardin", "pousse"]],
+  ["🥔", "patate",     "legume", ["rond", "brun", "mange", "cuisine", "chaud"]],
+  ["🥒", "concombre",  "legume", ["long", "vert", "croque", "froid", "plat"]],
+  ["🥬", "salade",     "legume", ["vert", "froid", "jardin", "pousse", "plat"]],
+  ["🌽", "mais",       "legume", ["long", "jaune", "mange", "ferme", "pousse"]],
+  ["🥦", "brocoli",    "legume", ["vert", "pousse", "cuisine", "chaud", "petit"]],
+  ["🧅", "oignon",     "legume", ["rond", "brun", "cuisine", "coupe", "blanc"]],
+  ["🍆", "aubergine",  "legume", ["long", "cuisine", "coupe", "noir", "grand"]],
+  ["🫑", "poivron",    "legume", ["vert", "rouge", "cuisine", "coupe", "croque", "jardin"]],
+  ["🎃", "citrouille", "legume", ["grand", "rond", "orange", "jardin", "pousse", "ferme"]],
+  ["🍄", "champignon", "legume", ["petit", "brun", "blanc", "pousse", "froid"]],
+  // ---- objets ----
+  ["🪑", "chaise",     "objet", ["maison", "cuisine", "assis", "pattes", "brun"]],
+  ["🛏️", "lit",        "objet", ["chambre", "maison", "nuit", "grand", "plat", "assis"]],
+  ["🚗", "voiture",    "objet", ["roule", "route", "rouge", "porte"]],
+  ["🚌", "bus",        "objet", ["roule", "route", "grand", "jaune", "porte"]],
+  ["🚲", "velo",       "objet", ["roule", "route", "joue", "jardin", "long"]],
+  ["🚂", "train",      "objet", ["roule", "long", "grand", "route", "noir"]],
+  ["✈️", "avion",      "objet", ["vole", "ailes", "grand", "blanc", "route"]],
+  ["🚤", "bateau",     "objet", ["nage", "mer", "blanc", "bleu", "porte"]],
+  ["🚜", "tracteur",   "objet", ["roule", "ferme", "grand", "vert", "porte"]],
+  ["⚽", "ballon",     "objet", ["rond", "joue", "blanc", "noir", "jardin"]],
+  ["🧸", "peluche",    "objet", ["joue", "poil", "chambre", "brun", "nuit", "assis"]],
+  ["🎈", "baudruche",  "objet", ["rond", "joue", "rouge", "vole", "jour"]],
+  ["🥄", "cuillere",   "objet", ["cuisine", "boit", "long", "petit", "gris"]],
+  ["🍴", "fourchette", "objet", ["cuisine", "coupe", "long", "gris", "pattes"]],
+  ["🔪", "couteau",    "objet", ["cuisine", "coupe", "long", "gris", "plat"]],
+  ["🍽️", "assiette",   "objet", ["cuisine", "maison", "rond", "plat", "blanc"]],
+  ["🥣", "bol",        "objet", ["cuisine", "boit", "rond", "blanc", "chaud"]],
+  ["🥛", "verre",      "objet", ["cuisine", "boit", "blanc", "froid", "long"]],
+  ["☕", "tasse",      "objet", ["cuisine", "boit", "chaud", "petit", "maison"]],
+  ["🍼", "biberon",    "objet", ["boit", "chambre", "petit", "blanc", "nuit", "bain"]],
+  ["🍞", "pain",       "objet", ["brun", "cuisine", "croque", "long", "chaud"]],
+  ["🥚", "oeuf",       "objet", ["rond", "blanc", "petit", "cuisine", "ferme"]],
+  ["🍪", "biscuit",    "objet", ["rond", "sucre", "croque", "brun", "plat"]],
+  ["🍦", "glace",      "objet", ["froid", "sucre", "blanc", "rose", "jour", "mer"]],
+  ["👟", "chaussure",  "objet", ["porte", "route", "petit", "brun", "plat"]],
+  ["🧦", "chaussette", "objet", ["porte", "petit", "chambre", "long", "blanc"]],
+  ["🎩", "chapeau",    "objet", ["porte", "rond", "noir", "plat", "jour"]],
+  ["🧥", "manteau",    "objet", ["porte", "froid", "bleu", "grand", "route"]],
+  ["👕", "tshirt",     "objet", ["porte", "bleu", "plat", "jour", "chaud"]],
+  ["🧼", "savon",      "objet", ["bain", "blanc", "petit", "rond", "rose", "nage"]],
+  ["🛁", "baignoire",  "objet", ["bain", "grand", "blanc", "nage", "maison", "chaud"]],
+  ["🪣", "seau",       "objet", ["sable", "mer", "joue", "rond", "bleu", "porte"]],
+  ["🔑", "cle",        "objet", ["petit", "gris", "maison", "long", "porte"]],
+  ["💡", "lampe",      "objet", ["maison", "chambre", "nuit", "jaune", "rond", "chaud"]],
+  ["📖", "livre",      "objet", ["chambre", "plat", "maison", "nuit", "assis"]],
+  ["🪁", "cerf-volant","objet", ["vole", "joue", "jardin", "plat", "ailes", "jour"]],
+  ["🥁", "tambour",    "objet", ["joue", "rond", "rouge", "chambre", "grand"]],
+  ["🎸", "guitare",    "objet", ["joue", "long", "brun", "maison", "assis"]],
+  ["🎒", "sac",        "objet", ["porte", "route", "bleu", "grand", "plat"]],
+  ["☂️", "parapluie",  "objet", ["porte", "route", "rond", "rouge", "froid", "noir"]],
+  // ---- nature ----
+  ["🌳", "arbre",      "nature", ["grand", "vert", "brun", "jardin", "pousse", "long"]],
+  ["🌸", "fleur",      "nature", ["petit", "jardin", "pousse", "rose", "jour", "sucre"]],
+  ["☀️", "soleil",     "nature", ["rond", "jaune", "jour", "chaud", "orange"]],
+  ["🌙", "lune",       "nature", ["nuit", "blanc", "rond", "chambre", "froid"]],
+  ["⭐", "etoile",     "nature", ["nuit", "jaune", "petit", "plat"]],
+  ["☁️", "nuage",      "nature", ["blanc", "jour", "grand", "vole", "gris"]],
+  ["🌧️", "pluie",      "nature", ["bleu", "froid", "jour", "jardin", "gris", "pousse"]],
+  ["❄️", "neige",      "nature", ["blanc", "froid", "petit", "plat", "jour"]],
+  ["🌊", "vague",      "nature", ["mer", "bleu", "nage", "grand", "sable", "blanc"]],
+  ["🪨", "caillou",    "nature", ["petit", "gris", "sable", "route", "plat", "mer"]],
+  ["🌈", "arc-en-ciel","nature", ["rouge", "jaune", "bleu", "vert", "jour", "grand"]],
+  ["🔥", "feu",        "nature", ["chaud", "rouge", "orange", "maison", "nuit", "jaune"]],
+  ["🍃", "feuille",    "nature", ["vert", "plat", "petit", "vole", "pousse"]],
+];
+</script>
+
+<!-- ====================================================================
+     GRAPHE D'ASSOCIATION. Fonctions pures, sans DOM, testables en Node.
+     ==================================================================== -->
+<script id="graphe">
+const ETIQUETTES_VALIDES = new Set(Object.values(VOCABULAIRE).flat());
+
+// Assertion de développement : une étiquette hors vocabulaire casse le calcul de
+// proximité silencieusement (elle ne rencontre jamais rien). On préfère planter.
+function validerNotions(notions) {
+  const ids = new Set();
+  for (const n of notions) {
+    if (!Array.isArray(n) || n.length !== 4) throw new Error("Notion mal formée : " + JSON.stringify(n));
+    const [image, id, famille, etiquettes] = n;
+    if (typeof image !== "string" || !image) throw new Error("Image manquante : " + id);
+    if (ids.has(id)) throw new Error("Identifiant en double : " + id);
+    ids.add(id);
+    if (!FAMILLES.includes(famille)) throw new Error("Famille inconnue « " + famille + " » : " + id);
+    if (!Array.isArray(etiquettes) || etiquettes.length < 3 || etiquettes.length > 6)
+      throw new Error("Il faut 3 à 6 étiquettes : " + id);
+    for (const e of etiquettes)
+      if (!ETIQUETTES_VALIDES.has(e)) throw new Error("Étiquette hors vocabulaire « " + e + " » : " + id);
+    if (new Set(etiquettes).size !== etiquettes.length) throw new Error("Étiquette répétée : " + id);
+  }
+}
+
+function estChemin(image) {
+  return image.includes("/") || /\.(png|webp|svg|jpe?g|gif|avif)$/i.test(image);
+}
+
+// score(a, b) = 3 × étiquettes communes + 2 × même famille + aléa dans [0 ; 1.6].
+// La famille pèse moins qu'une seule étiquette commune : la proximité doit venir
+// de traits que l'enfant perçoit (poil, rond, mange…), pas d'un classement.
+// L'aléa empêche qu'une notion donne toujours les mêmes quatre voisines, sans
+// quoi l'enfant apprend un chemin au lieu de regarder les images.
+function score(a, b, alea) {
+  let communs = 0;
+  for (const e of a[3]) if (b[3].includes(e)) communs++;
+  return 3 * communs + (a[2] === b[2] ? 2 : 0) + alea() * 1.6;
+}
+
+// Quatre voisines de `centre`, hors `exclus` (identifiants), triées par score.
+function voisins(notions, centre, exclus, alea) {
+  alea = alea || Math.random;
+  const candidats = [];
+  for (const n of notions) {
+    if (n === centre || n[1] === centre[1] || exclus.has(n[1])) continue;
+    candidats.push([n, score(centre, n, alea)]);
+  }
+  candidats.sort((x, y) => y[1] - x[1]);
+
+  // Au plus deux voisines de la famille du centre. Sans cette limite, les
+  // animaux ont tant d'étiquettes en commun entre eux (poil, pattes, queue) que
+  // la promenade n'en sort plus. Le tableau ne prend que quatre voisines,
+  // donc au moins deux viennent d'ailleurs, à chaque pas.
+  const choisis = [];
+  let memeFamille = 0;
+  for (const [n] of candidats) {
+    if (choisis.length === 4) break;
+    if (n[2] === centre[2]) {
+      if (memeFamille >= 2) continue;
+      memeFamille++;
+    }
+    choisis.push(n);
+  }
+  // Contrainte relâchée si elle laisse moins de quatre candidats (petit tableau).
+  for (const [n] of candidats) {
+    if (choisis.length === 4) break;
+    if (!choisis.includes(n)) choisis.push(n);
+  }
+  return choisis;
+}
+
+// Un état = un centre et ses quatre coins. Le pas suivant écarte le centre
+// précédent et les quatre coins qu'on vient d'afficher : sans cela, deux images
+// très proches se renvoient l'une à l'autre indéfiniment.
+function etatSuivant(notions, etat, vers, alea) {
+  const exclus = new Set();
+  if (etat) {
+    exclus.add(etat.centre[1]);
+    for (const c of etat.coins) exclus.add(c[1]);
+  }
+  return { centre: vers, coins: voisins(notions, vers, exclus, alea) };
+}
+
+validerNotions(NOTIONS);
+</script>
+
+<!-- ====================================================================
+     INTERFACE
+     ==================================================================== -->
+<script>
+(function () {
+  "use strict";
+
+  const CONFIG = {
+    // Purge du ghosting : une frame de noir plein écran toutes les N navigations.
+    // Désactivé par défaut ; à activer si la dalle garde des traces. Si la
+    // liseuse expose une API constructeur, l'assigner à motAMot.rafraichirDalle.
+    flashAntiGhosting: false,
+    flashToutesLes: 8,
+  };
+
+  const plateau = document.getElementById("plateau");
+  const plaque = document.getElementById("centre");
+  const cercles = [1, 2, 3, 4].map((i) => document.getElementById("coin-" + i));
+  const fils = [1, 2, 3, 4].map((i) => document.getElementById("fil-" + i));
+  const svgFils = document.getElementById("fils");
+  const voile = document.getElementById("voile");
+  const boutonRetour = document.getElementById("bouton-retour");
+  const boutonHasard = document.getElementById("bouton-hasard");
+  const boutonEink = document.getElementById("bouton-eink");
+
+  // Un nœud DOM par notion, construit une fois pour toutes et déplacé d'une
+  // forme à l'autre : les <img> restent décodées, donc le repaint est immédiat
+  // et unique. (Une notion n'est jamais affichée deux fois à la fois.)
+  const noeuds = new Map();
+  for (const n of NOTIONS) {
+    let el;
+    if (estChemin(n[0])) {
+      el = new Image();
+      el.src = n[0];
+      el.alt = "";
+      el.decoding = "sync";
+      el.draggable = false;
+    } else {
+      el = document.createElement("span");
+      el.className = "glyphe";
+      el.textContent = n[0];
+    }
+    noeuds.set(n[1], el);
+  }
+
+  let etat = null;
+  const historique = [];
+  let navigations = 0;
+
+  function afficher(forme, notion) {
+    const el = noeuds.get(notion[1]);
+    if (forme.firstChild !== el || forme.childNodes.length !== 1) {
+      forme.textContent = "";
+      forme.appendChild(el);
+    }
+  }
+
+  // Les cinq images changent dans la même tâche : un seul repaint.
+  function rendre() {
+    afficher(plaque, etat.centre);
+    for (let i = 0; i < 4; i++) afficher(cercles[i], etat.coins[i]);
+    boutonRetour.disabled = historique.length === 0;
+    mesurerFils();
+  }
+
+  function purgerDalle() {
+    if (typeof motAMot.rafraichirDalle === "function") {
+      motAMot.rafraichirDalle();
+      return;
+    }
+    voile.hidden = false;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { voile.hidden = true; });
+    });
+  }
+
+  function aller(vers, garderHistorique) {
+    if (garderHistorique !== false && etat) historique.push(etat);
+    etat = etatSuivant(NOTIONS, etat, vers);
+    navigations++;
+    if (CONFIG.flashAntiGhosting && navigations % CONFIG.flashToutesLes === 0) purgerDalle();
+    rendre();
+  }
+
+  function naviguerCoin(i) {
+    if (etat && etat.coins[i]) aller(etat.coins[i]);
+  }
+
+  function auHasard() {
+    let vers;
+    do vers = NOTIONS[Math.floor(Math.random() * NOTIONS.length)];
+    while (etat && vers === etat.centre && NOTIONS.length > 1);
+    aller(vers);
+  }
+
+  function retour() {
+    if (historique.length === 0) return;
+    etat = historique.pop();
+    rendre();
+  }
+
+  // ---- Fils pointillés, mesurés et non estimés ----
+  // Les formes ont des tailles en vmin, en vw et en vh mélangés : aucun
+  // pourcentage ne prédit où tombe leur bord. On mesure, et on calcule
+  // l'intersection exacte du segment centre→centre avec chaque contour.
+  function intersectionPlaque(cx, cy, dx, dy, demi, rayon) {
+    // Demi-côté `demi`, angles arrondis de rayon `rayon`.
+    const t = demi / Math.max(Math.abs(dx), Math.abs(dy));
+    const px = t * dx, py = t * dy;
+    const plat = demi - rayon;
+    if (Math.abs(px) <= plat || Math.abs(py) <= plat) return [cx + px, cy + py];
+    // Le segment touche un angle arrondi : intersection avec ce cercle-là.
+    const kx = Math.sign(dx) * plat, ky = Math.sign(dy) * plat;
+    const dd = dx * dx + dy * dy, dk = dx * kx + dy * ky, kk = kx * kx + ky * ky;
+    const disc = Math.sqrt(Math.max(0, dk * dk - dd * (kk - rayon * rayon)));
+    const tc = (dk + disc) / dd;
+    return [cx + tc * dx, cy + tc * dy];
+  }
+
+  function mesurerFils() {
+    const R = plateau.getBoundingClientRect();
+    if (R.width === 0 || R.height === 0) return;
+    svgFils.setAttribute("width", R.width);
+    svgFils.setAttribute("height", R.height);
+    svgFils.setAttribute("viewBox", "0 0 " + R.width + " " + R.height);
+
+    const P = plaque.getBoundingClientRect();
+    const pcx = P.left + P.width / 2 - R.left;
+    const pcy = P.top + P.height / 2 - R.top;
+    const demi = P.width / 2;
+    const rayonAngle = parseFloat(getComputedStyle(plaque).borderTopLeftRadius) || 0;
+
+    for (let i = 0; i < 4; i++) {
+      const C = cercles[i].getBoundingClientRect();
+      const ccx = C.left + C.width / 2 - R.left;
+      const ccy = C.top + C.height / 2 - R.top;
+      const r = C.width / 2;
+      const dx = ccx - pcx, dy = ccy - pcy;
+      const longueur = Math.hypot(dx, dy) || 1;
+      const [x1, y1] = intersectionPlaque(pcx, pcy, dx, dy, demi, rayonAngle);
+      const x2 = ccx - (dx / longueur) * r;
+      const y2 = ccy - (dy / longueur) * r;
+      fils[i].setAttribute("x1", x1.toFixed(2));
+      fils[i].setAttribute("y1", y1.toFixed(2));
+      fils[i].setAttribute("x2", x2.toFixed(2));
+      fils[i].setAttribute("y2", y2.toFixed(2));
+    }
+  }
+
+  // ---- Le geste : appui = inversion, relâchement = navigation ----
+  cercles.forEach(function (cercle, i) {
+    cercle.addEventListener("pointerdown", function (e) {
+      if (!e.isPrimary) return;
+      e.preventDefault();
+      try { cercle.setPointerCapture(e.pointerId); } catch (_) {}
+      cercle.classList.add("presse");
+    });
+    cercle.addEventListener("pointerup", function (e) {
+      if (!cercle.classList.contains("presse")) return;
+      cercle.classList.remove("presse");
+      // Relâché hors du cercle : on annule sans naviguer.
+      const R = cercle.getBoundingClientRect();
+      const ex = e.clientX - (R.left + R.width / 2), ey = e.clientY - (R.top + R.height / 2);
+      if (Math.hypot(ex, ey) > R.width / 2 + 8) return;
+      naviguerCoin(i);
+    });
+    cercle.addEventListener("pointercancel", function () { cercle.classList.remove("presse"); });
+    cercle.addEventListener("lostpointercapture", function () { cercle.classList.remove("presse"); });
+  });
+  // Le centre n'a volontairement aucun gestionnaire : le taper ne fait rien.
+
+  boutonRetour.addEventListener("click", retour);
+  boutonHasard.addEventListener("click", auHasard);
+
+  // ---- Aperçu e-ink, mémorisé si le stockage le permet ----
+  function appliquerEink(actif) {
+    document.documentElement.classList.toggle("eink", actif);
+    boutonEink.setAttribute("aria-pressed", actif ? "true" : "false");
+    try { localStorage.setItem("motamot.eink", actif ? "1" : "0"); } catch (_) {}
+    mesurerFils();
+  }
+  boutonEink.addEventListener("click", function () {
+    appliquerEink(!document.documentElement.classList.contains("eink"));
+  });
+  let einkInitial = false;
+  try { einkInitial = localStorage.getItem("motamot.eink") === "1"; } catch (_) {}
+  appliquerEink(einkInitial);
+
+  // ---- Raccourcis de développement ----
+  document.addEventListener("keydown", function (e) {
+    if (e.key >= "1" && e.key <= "4") naviguerCoin(Number(e.key) - 1);
+    else if (e.key === " ") { e.preventDefault(); auHasard(); }
+    else if (e.key === "Backspace") { e.preventDefault(); retour(); }
+  });
+
+  // ---- Redimensionnement : les fils sont remesurés, jamais interpolés ----
+  if (typeof ResizeObserver === "function") new ResizeObserver(mesurerFils).observe(plateau);
+  window.addEventListener("resize", mesurerFils);
+  window.addEventListener("orientationchange", mesurerFils);
+
+  const motAMot = {
+    config: CONFIG,
+    purgerDalle: purgerDalle,
+    rafraichirDalle: null,
+    mesurerFils: mesurerFils,
+    // Pour les tests et les journaux : aller à une notion par son identifiant.
+    aller: function (id) {
+      const n = NOTIONS.find(function (x) { return x[1] === id; });
+      if (n) aller(n);
+      return !!n;
+    },
+    get etat() { return etat; },
+    get historique() { return historique; },
+  };
+  window.motAMot = motAMot;
+
+  auHasard();
+})();
+</script>
+</body>
+</html>
