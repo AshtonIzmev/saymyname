@@ -250,10 +250,10 @@ test("barre du père : retour, hasard, e-ink (mémorisé), raccourcis clavier", 
   await page.click("#bouton-hasard");
   assert.notEqual((await idsAffiches(page)).centre, e0.centre);
 
-  // La barre ne contient que trois commandes, sans couleur.
+  // La barre ne contient que quatre commandes, sans couleur.
   const barre = await page.evaluate(() => [...document.querySelectorAll("#barre button")].map((b) => ({
     texte: b.textContent, couleur: getComputedStyle(b).color, fond: getComputedStyle(b).backgroundColor })));
-  assert.deepEqual(barre.map((b) => b.texte), ["Retour", "Au hasard", "E-ink"]);
+  assert.deepEqual(barre.map((b) => b.texte), ["Jeux", "Retour", "Au hasard", "E-ink"]);
   for (const b of barre) for (const c of [b.couleur, b.fond]) {
     const [r, g, bl] = c.match(/\d+/g).map(Number);
     assert.ok(r === g && g === bl, "couleur dans la barre : " + c);

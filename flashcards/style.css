@@ -1,0 +1,344 @@
+/* ------------------------------------------------------------------------
+   Deux mondes. L'écran de l'enfant : blanc, nu, immense, une chose à la fois,
+   aucun bouton, aucune animation (sauf le fondu prévu du mode choix).
+   Les écrans du parent : sobres, lisibles au téléphone, rien de plus.
+   ------------------------------------------------------------------------ */
+:root {
+  --encre: #111;
+  --fond: #fff;
+  --discret: #5c5c5c;
+  --trait: #d9d9d9;
+  --accent: #1f5fbf;
+  --initiale: #d2451e;
+  --danger: #b3261e;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--fond);
+  color: var(--encre);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+.vue { min-height: 100%; }
+
+/* ---------- Côté parent ---------- */
+.parent { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
+.entete {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.entete h1 { margin: 0; font-size: 20px; text-align: center; }
+.entete > :last-child { justify-self: end; }
+.lien {
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 8px 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+h2 { font-size: 17px; margin: 28px 0 8px; }
+.discret { color: var(--discret); font-size: 14px; }
+.centre { text-align: center; }
+.message { min-height: 1.4em; font-weight: 600; }
+.message.erreur { color: var(--danger); }
+code { background: #f2f2f2; padding: 0 4px; border-radius: 3px; }
+
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 2px solid var(--encre);
+  background: var(--fond);
+  color: var(--encre);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bouton.principal { background: var(--encre); color: var(--fond); width: 100%; min-height: 52px; }
+.bouton.secondaire { border-color: var(--trait); }
+.bouton.danger { border-color: var(--danger); color: var(--danger); }
+.bouton:disabled { opacity: .4; cursor: default; }
+.bouton.enregistrer.actif { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+.segments { display: flex; border: 2px solid var(--encre); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+.segments button {
+  flex: 1;
+  font: inherit;
+  min-height: 44px;
+  border: 0;
+  background: var(--fond);
+  color: var(--encre);
+  cursor: pointer;
+}
+.segments button + button { border-left: 2px solid var(--encre); }
+.segments button[aria-checked="true"] { background: var(--encre); color: var(--fond); font-weight: 600; }
+
+/* Départ : deux grandes tuiles, une par enfant. */
+.jumeaux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.jumeau {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 8px;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  border: 2px solid var(--encre);
+  border-radius: 18px;
+  background: var(--fond);
+  color: var(--encre);
+  cursor: pointer;
+}
+.jumeau .portrait {
+  width: min(36vw, 240px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  font-size: min(18vw, 120px);
+}
+.jumeau .portrait img { width: 100%; height: 100%; object-fit: cover; }
+
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.tuile-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36vh;
+  font: inherit;
+  border: 2px solid var(--encre);
+  border-radius: 18px;
+  background: var(--fond);
+  color: var(--encre);
+  cursor: pointer;
+}
+.tuile-titre { font-size: 32px; font-weight: 700; }
+.tuile-sous { color: var(--discret); }
+
+.onglets { display: flex; gap: 4px; border-bottom: 2px solid var(--trait); margin-bottom: 16px; overflow-x: auto; }
+.onglets button {
+  font: inherit;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  background: none;
+  color: var(--discret);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.onglets button[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--encre); font-weight: 600; }
+
+
+.formulaire { display: flex; flex-direction: column; gap: 14px; }
+.champ { display: flex; flex-direction: column; gap: 4px; border: 0; padding: 0; margin: 0; }
+.champ > span, .champ > legend { font-size: 14px; color: var(--discret); padding: 0; }
+input[type="text"], input[type="password"], input[type="search"], input[type="number"], select, textarea {
+  font: inherit;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 2px solid var(--trait);
+  border-radius: 8px;
+  background: var(--fond);
+  color: var(--encre);
+  width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+.ligne { display: flex; align-items: center; gap: 8px; }
+.ligne.petite { font-size: 14px; color: var(--discret); }
+.ligne.petite input { width: 7em; min-height: 36px; }
+.cases { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.cases label { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.cases input { width: 22px; height: 22px; }
+.voix { display: flex; gap: 8px; flex-wrap: wrap; }
+.voix .bouton { flex: 1; }
+.enregistrer { touch-action: none; }
+
+.photo-zone { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.apercu {
+  width: min(70vw, 280px);
+  aspect-ratio: 1;
+  border: 2px dashed var(--trait);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--discret);
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 8px;
+}
+.apercu img { width: 100%; height: 100%; object-fit: cover; }
+.apercu .glyphe { font-size: min(44vw, 180px); }
+
+.filtres { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.liste { list-style: none; margin: 0; padding: 0; }
+.liste li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--trait);
+  cursor: pointer;
+}
+.vignette {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #f4f4f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 36px;
+}
+.vignette img { width: 100%; height: 100%; object-fit: cover; }
+.vignette .lettre-vignette { font-size: 30px; font-weight: 700; }
+.liste .titre { font-weight: 600; }
+.liste .infos { font-size: 13px; color: var(--discret); }
+.drapeaux { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.drapeau { font-size: 12px; padding: 2px 6px; border-radius: 6px; background: #f0f0f0; white-space: nowrap; }
+.drapeau.alerte { background: #fde3e0; color: var(--danger); }
+
+/* Tableau de bord : les deux enfants côte à côte, jamais classés. */
+.cote-a-cote { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.carte-stats { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; }
+.carte-stats h3 { margin: 0 0 8px; font-size: 17px; }
+.boites { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; margin-bottom: 12px; }
+.boites div { background: #f4f4f4; border-radius: 6px; padding: 6px 0; }
+.boites b { display: block; font-size: 20px; }
+.boites small { color: var(--discret); font-size: 11px; }
+.chiffres { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 14px; }
+.chiffres dt { color: var(--discret); }
+.chiffres dd { margin: 0; font-weight: 600; text-align: right; }
+.mini-liste { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.mini-liste button { font: inherit; color: var(--accent); background: none; border: 0; padding: 2px 0; cursor: pointer; text-align: left; }
+
+.paquet-reglage { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; }
+.paquet-reglage .portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; }
+.paquet-reglage .portrait img { width: 100%; height: 100%; object-fit: cover; }
+.paquet-reglage .champs { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
+
+dialog#fiche {
+  width: min(680px, 100vw);
+  max-height: 100vh;
+  border: 0;
+  border-radius: 16px;
+  padding: 16px;
+}
+dialog#fiche::backdrop { background: rgba(0, 0, 0, .45); }
+.fiche-images { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.fiche-images .vignette { width: 88px; height: 88px; font-size: 56px; border: 3px solid transparent; cursor: pointer; flex: none; }
+.fiche-images .vignette.principale { border-color: var(--encre); }
+.fiche-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.historique { width: 100%; border-collapse: collapse; font-size: 14px; }
+.historique td { padding: 4px; border-bottom: 1px solid var(--trait); }
+.alerte-sangsue { background: #fde3e0; color: var(--danger); padding: 8px 12px; border-radius: 8px; }
+
+/* ---------- L'écran de l'enfant ---------- */
+.enfant {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+#scene { width: 100%; height: 100%; }
+.glyphe {
+  display: block;
+  line-height: 1;
+  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+.scene img { display: block; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+
+/* Montrer : l'image occupe ~70 % de l'écran, l'étiquette dessous. */
+.montrer { display: grid; grid-template-rows: 70% 30%; height: 100%; }
+.visuel { display: flex; align-items: center; justify-content: center; min-height: 0; overflow: hidden; }
+.montrer .visuel-mot .glyphe { font-size: min(58vh, 80vw); }
+.montrer .visuel-mot img { width: min(68vh, 92vw); height: min(68vh, 92vw); }
+.etiquette {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
+  font-size: min(15vh, 12vw);
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.initiale { color: var(--initiale); }
+
+.visuel-nombre { display: flex; align-items: center; justify-content: center; gap: 4vmin; width: 100%; height: 100%; }
+.visuel-nombre .chiffre { font-size: min(52vh, 40vw); font-weight: 700; line-height: 1; }
+.objets { display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 2vmin; max-width: 50vw; }
+.objets .glyphe { font-size: min(16vh, 13vw); }
+.objets img { width: min(18vh, 15vw); height: min(18vh, 15vw); }
+.choisir .objets { max-width: 100%; }
+
+.visuel-lettre { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+.visuel-lettre .lettre { font-size: min(50vh, 60vw); font-weight: 700; line-height: 1; }
+.visuel-lettre .compagnon .glyphe { font-size: min(14vh, 14vw); }
+.visuel-lettre .compagnon img { width: min(16vh, 16vw); height: min(16vh, 16vw); }
+
+/* Choisir : deux images côte à côte, sans étiquette. */
+.choisir { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.option { display: grid; grid-template-rows: 1fr auto; align-items: center; justify-items: center; min-width: 0; padding: 4vmin; }
+.option .visuel { width: 100%; height: 100%; }
+.choisir .visuel-mot .glyphe { font-size: min(40vw, 62vh); }
+.choisir .visuel-mot img { width: min(44vw, 70vh); height: min(44vw, 70vh); }
+.choisir .visuel-lettre .lettre { font-size: min(36vw, 60vh); }
+.choisir .etiquette { font-size: min(10vh, 7vw); min-height: 1.3em; }
+/* Le seul mouvement de toute l'application, demandé par le cahier des charges :
+   l'autre image s'efface quand l'enfant a trouvé. */
+.option { transition: opacity .6s ease; }
+.option.estompee { opacity: 0; }
+
+.fini {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: min(22vh, 20vw);
+  font-weight: 600;
+  color: var(--encre);
+}
+
+@media (max-width: 520px) {
+  .cote-a-cote { grid-template-columns: 1fr; }
+}
+@media (orientation: portrait) {
+  .choisir { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .choisir .visuel-mot .glyphe { font-size: min(30vh, 70vw); }
+  .choisir .visuel-mot img { width: min(36vh, 80vw); height: min(36vh, 80vw); }
+  .visuel-nombre { flex-direction: column; }
+  .objets { max-width: 90vw; }
+}

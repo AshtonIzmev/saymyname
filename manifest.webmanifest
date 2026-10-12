@@ -1,0 +1,17 @@
+{
+  "name": "Jeux",
+  "short_name": "Jeux",
+  "description": "Mot à Mot et les flashcards des jumeaux.",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "icones/icone.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

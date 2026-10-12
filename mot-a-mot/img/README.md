@@ -3,7 +3,7 @@
 Ce dossier reçoit les illustrations définitives, une par notion, nommées par
 l'identifiant de la notion : `chien.webp`, `pomme.webp`, `cerf-volant.webp`…
 
-Pour l'instant il est vide : les emoji du tableau `NOTIONS` (dans `index.html`)
+Pour l'instant il est vide : les emoji du tableau `NOTIONS` (dans `mot-a-mot/index.html`)
 servent d'images de remplacement.
 
 ## Cahier des charges d'une image
@@ -26,7 +26,7 @@ refusée.
 
 ## Brancher une image
 
-Dans `index.html`, remplacer l'emoji de la ligne par le chemin :
+Dans `mot-a-mot/index.html`, remplacer l'emoji de la ligne par le chemin :
 
 ```js
 ["🐕", "chien", "animal", [...]]           // avant

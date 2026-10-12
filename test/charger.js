@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const CHEMIN_HTML = path.join(__dirname, "..", "index.html");
+const CHEMIN_HTML = path.join(__dirname, "..", "mot-a-mot", "index.html");
 
 function extraireScript(html, id) {
   const m = html.match(new RegExp('<script id="' + id + '">([\\s\\S]*?)</script>'));
