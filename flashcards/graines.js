@@ -1,8 +1,8 @@
 // ==========================================================================
 // JEU DE DÉPART. Semé une fois, dans les deux paquets, avec des emoji en
 // attendant les photos du parent et les dessins MultiPic / BOSS.
-// Identifiants déterministes (« word-chien », « letter-B ») : la tablette et
-// le serveur sèment chacun de leur côté sans créer de doublons.
+// Identifiants déterministes (« word-chien », « letter-B ») : stables d'un
+// appareil à l'autre, lisibles dans une sauvegarde.
 // ==========================================================================
 (function (racine, fabrique) {
   if (typeof module === "object" && module.exports) module.exports = fabrique();

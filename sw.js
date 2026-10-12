@@ -2,7 +2,7 @@
 // démarre sans réseau. Les données et les médias ne passent pas par ici :
 // ils vivent dans IndexedDB (voir flashcards/stockage.js).
 // Changer VERSION à chaque publication pour purger l'ancienne copie.
-const VERSION = "jeux-v1";
+const VERSION = "jeux-v2";
 const COQUILLE = [
   "./",
   "index.html",
@@ -32,7 +32,7 @@ self.addEventListener("activate", (e) => {
 // Réseau d'abord quand il répond (pour prendre les mises à jour), copie sinon.
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== "GET" || url.origin !== location.origin || url.pathname.includes("/api/")) return;
+  if (e.request.method !== "GET" || url.origin !== location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then((r) => {

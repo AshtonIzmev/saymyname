@@ -149,10 +149,6 @@ code { background: #f2f2f2; padding: 0 4px; border-radius: 3px; }
 }
 .onglets button[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--encre); font-weight: 600; }
 
-.pastille { width: 14px; height: 14px; border-radius: 50%; background: var(--trait); }
-.pastille.ok { background: #2e8b57; }
-.pastille.encours { background: #d4a017; }
-.pastille.horsligne, .pastille.refuse { background: var(--danger); }
 
 .formulaire { display: flex; flex-direction: column; gap: 14px; }
 .champ { display: flex; flex-direction: column; gap: 4px; border: 0; padding: 0; margin: 0; }

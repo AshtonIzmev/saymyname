@@ -59,7 +59,7 @@
   <header class="entete">
     <button type="button" class="lien" id="parent-fermer">← Séances</button>
     <h1>Parent</h1>
-    <span id="pastille-synchro" class="pastille" title="Synchronisation"></span>
+    <span></span>
   </header>
   <nav class="onglets" id="onglets">
     <button type="button" data-onglet="ajouter" aria-selected="true">Ajouter</button>
@@ -141,15 +141,21 @@
     <h2>Les enfants</h2>
     <div id="reglages-paquets"></div>
 
-    <h2>Synchronisation</h2>
-    <p id="synchro-statut" class="discret"></p>
-    <label class="champ"><span>Secret de cet appareil</span><input type="password" id="secret" autocomplete="off"></label>
-    <button type="button" class="bouton" id="synchroniser">Synchroniser maintenant</button>
+    <h2>Sauvegarde</h2>
+    <p class="discret">Tout est enregistré sur cet appareil seulement. Exporter télécharge un
+      fichier avec les cartes, les photos, les voix et les progrès des enfants : à garder
+      en lieu sûr, ou à importer sur un autre appareil (l'import remplace tout ce qu'il contient).</p>
+    <p id="sauvegarde-statut" class="discret"></p>
+    <div class="voix">
+      <button type="button" class="bouton" id="exporter">Exporter</button>
+      <label class="bouton secondaire">Importer<input type="file" id="importer-sauvegarde" accept="application/json,.json" hidden></label>
+    </div>
+    <p id="sauvegarde-message" class="message" role="status"></p>
 
     <h2>Voix</h2>
     <label class="champ"><span>Enregistré par</span><input type="text" id="voix-nom" placeholder="papa"></label>
 
-    <h2>Import en masse</h2>
+    <h2>Ajouter des images en masse</h2>
     <p class="discret">Un dossier d'images nommées par leur mot : <code>chien.jpg</code> → « chien ».
       <code>chien-2.jpg</code> ajoute une deuxième image à la même carte.</p>
     <label class="champ"><span>Source</span><select id="import-source"></select></label>

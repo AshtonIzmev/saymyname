@@ -1,7 +1,9 @@
 // ==========================================================================
 // INTERFACE. Départ (choisir l'enfant, le mode), écran de l'enfant (montrer,
 // choisir), écran « fini », et côté parent (ajouter, cartes, tableau,
-// réglages). L'état vit dans Stockage ; la planification dans Planificateur.
+// réglages). L'état vit dans Stockage, sur l'appareil ; la planification dans
+// Planificateur. Pas de serveur : on passe d'un appareil à l'autre par une
+// sauvegarde exportée puis importée.
 // ==========================================================================
 (function () {
   "use strict";
@@ -14,7 +16,7 @@
     appuiLong: 900,        // appui long = fin de séance
     seuilGlisser: 60,      // px pour qu'un geste soit un glissement
     attenteErreur: 1000,   // mode choix : silence après une erreur
-    synchroToutesLes: 60000,
+    rappelSauvegarde: 14,  // jours sans sauvegarde avant un rappel au départ
   };
   const CHIFFRES = ["zéro", "un", "deux", "trois", "quatre", "cinq"];
   const NOMS_NOTES = { knew: "su", hesitant: "hésitant", didnt_know: "pas su" };
@@ -281,7 +283,7 @@
     for (const d of paquets())
       zone.append(h("button", { type: "button", class: "jumeau", "data-deck": d.id, onclick: () => choisirPaquet(d.id) },
         portrait(d), d.name));
-    afficherStatut();
+    afficherRappelSauvegarde();
   }
 
   function revuesListe() { return Object.values(S.etat.reviews); }
@@ -460,7 +462,6 @@
       rendreDepart();
       afficherVue("vue-depart");
     }, CONFIG.verrouFini);
-    S.synchroniser();
   }
 
   // ---------- Gestes du parent sur l'écran de l'enfant ----------
@@ -605,7 +606,6 @@
     S.enregistrerCarte(nouvelle, decks);
     message(msg, "« " + nouvelle.label + " » ajoutée : elle sera dans la prochaine séance." + (audio ? "" : " Pensez à enregistrer la voix."));
     reinitialiserAjout();
-    S.synchroniser();
   }
 
   // ======================================================================
@@ -745,8 +745,7 @@
       fiche.close();
       rendreCartes();
       rendreTableau();
-      S.synchroniser();
-    }
+      }
 
     fiche.append(
       h("header", { class: "entete" }, h("button", { type: "button", class: "lien", onclick: () => fiche.close() }, "Fermer"),
@@ -847,8 +846,7 @@
         cap.value = String(n);
         S.enregistrerPaquet(Object.assign({}, S.etat.decks[p.id], { name: nom.value.trim() || p.name, daily_cap: n }));
         rendreDepart(); remplirFiltres();
-        S.synchroniser();
-      };
+          };
       nom.addEventListener("change", sauver);
       cap.addEventListener("change", sauver);
       const photo = h("label", { class: "portrait", title: "Photo" }, portrait(p).firstChild,
@@ -858,28 +856,76 @@
           const media = await S.ajouterMedia(await recadrerCarre(f, 512));
           S.enregistrerPaquet(Object.assign({}, S.etat.decks[p.id], { photo: media }));
           rendreReglages(); rendreDepart();
-          S.synchroniser();
-        } }));
+              } }));
       zone.append(h("div", { class: "paquet-reglage", "data-deck": p.id }, photo,
         h("div", { class: "champs" },
           h("label", { class: "champ" }, h("span", null, "Prénom"), nom),
           h("label", { class: "champ" }, h("span", null, "Cartes / jour"), cap))));
     }
-    $("secret").value = S.secret();
     $("voix-nom").value = voixParDefaut();
     cochesPaquets($("import-paquets"), "import");
-    afficherStatut();
+    afficherDerniereSauvegarde();
   }
 
-  function afficherStatut() {
-    const s = S.statut;
-    const attente = S.etat ? S.enAttente() : 0;
-    const texte = s.message + (attente ? " · " + attente + " changement" + (attente > 1 ? "s" : "") + " en attente" : "") +
-      (s.derniere ? " · " + new Date(s.derniere).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "");
-    $("synchro-statut").textContent = texte;
-    $("statut-depart").textContent = s.etat === "refuse" ? texte : "";
-    $("pastille-synchro").className = "pastille " + s.etat;
-    $("pastille-synchro").title = texte;
+  // ======================================================================
+  // PARENT : SAUVEGARDE (exporter sur cet appareil, importer sur un autre)
+  // ======================================================================
+
+  const CLE_SAUVEGARDE = "flashcards.derniereSauvegarde";
+  function derniereSauvegarde() { try { return Number(localStorage.getItem(CLE_SAUVEGARDE)) || null; } catch (_) { return null; } }
+
+  function afficherDerniereSauvegarde() {
+    const t = derniereSauvegarde();
+    $("sauvegarde-statut").textContent = t
+      ? "Dernière sauvegarde : " + new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + "."
+      : "Aucune sauvegarde exportée depuis cet appareil.";
+  }
+
+  // Un rappel discret au départ, seulement quand il y a des progrès à perdre.
+  function afficherRappelSauvegarde() {
+    const t = derniereSauvegarde();
+    const progres = Object.keys(S.etat.reviews).length > 0;
+    const jours = t ? Math.floor((Date.now() - t) / P.JOUR) : Infinity;
+    $("statut-depart").textContent = progres && jours >= CONFIG.rappelSauvegarde
+      ? (t ? "Dernière sauvegarde il y a " + jours + " jours" : "Aucune sauvegarde") + " : Parent → Réglages → Exporter."
+      : "";
+  }
+
+  async function exporterSauvegarde() {
+    const msg = $("sauvegarde-message");
+    message(msg, "Préparation de la sauvegarde…");
+    try {
+      const blob = await S.exporter();
+      const date = new Date().toISOString().slice(0, 10);
+      const lien = h("a", { href: URL.createObjectURL(blob), download: "flashcards-" + date + ".json" });
+      document.body.append(lien);
+      lien.click();
+      lien.remove();
+      setTimeout(() => URL.revokeObjectURL(lien.href), 60000);
+      try { localStorage.setItem(CLE_SAUVEGARDE, String(Date.now())); } catch (_) {}
+      const mo = Math.max(0.1, Math.round(blob.size / 104857.6) / 10);
+      message(msg, "Sauvegarde téléchargée (" + mo + " Mo) : flashcards-" + date + ".json, dans les téléchargements.");
+      afficherDerniereSauvegarde();
+    } catch (e) {
+      message(msg, "Échec de l'export : " + e.message, true);
+    }
+  }
+
+  async function importerSauvegarde(fichier) {
+    const msg = $("sauvegarde-message");
+    if (!fichier) return;
+    if (!confirm("Remplacer tout ce qui est sur cet appareil (cartes, photos, voix, progrès des enfants) par cette sauvegarde ?")) return;
+    message(msg, "Import…");
+    try {
+      const r = await S.importer(fichier);
+      const quand = r.exporte_le ? " du " + new Date(r.exporte_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+      message(msg, "Sauvegarde" + quand + " importée : " + r.cartes + " cartes, " + r.revues + " révisions, " + r.medias + " photos et voix.");
+      remplirFiltres();
+      rendreDepart();
+      rendreReglages();
+    } catch (e) {
+      message(msg, e.message, true);
+    }
   }
 
   // Import en masse : chien.jpg, chien-2.jpg → une carte « chien », deux images.
@@ -918,7 +964,6 @@
     }
     message(msg, creees + " carte" + (creees > 1 ? "s" : "") + " créée" + (creees > 1 ? "s" : "") + ", " + ajoutees + " image" + (ajoutees > 1 ? "s" : "") + " importée" + (ajoutees > 1 ? "s" : "") + ".");
     rendreCartes();
-    S.synchroniser();
   }
 
   // ======================================================================
@@ -938,7 +983,6 @@
     if (location.hash !== "#parent") history.replaceState(null, "", "#parent");
     cochesPaquets($("ajout-paquets"), "ajout");
     ouvrirOnglet("ajouter");
-    S.synchroniser();
   }
 
   function fermerParent() {
@@ -994,9 +1038,9 @@
     for (const id of ["filtre-type", "filtre-boite", "filtre-source", "filtre-etat"]) $(id).addEventListener("change", rendreCartes);
     $("filtre-texte").addEventListener("input", rendreCartes);
 
-    $("secret").addEventListener("change", (ev) => { S.definirSecret(ev.target.value.trim()); S.synchroniser(); });
     $("voix-nom").addEventListener("change", (ev) => { try { localStorage.setItem("flashcards.voix", ev.target.value.trim()); } catch (_) {} });
-    $("synchroniser").addEventListener("click", () => S.synchroniser().then(() => { rendreReglages(); }));
+    $("exporter").addEventListener("click", exporterSauvegarde);
+    $("importer-sauvegarde").addEventListener("change", (ev) => { importerSauvegarde(ev.target.files[0]); ev.target.value = ""; });
     $("import-dossier").addEventListener("change", (ev) => importer(ev.target.files));
     $("import-fichiers").addEventListener("change", (ev) => importer(ev.target.files));
 
@@ -1009,16 +1053,6 @@
         1: () => toucherOption(0), 2: () => toucherOption(1) }[ev.key];
       if (t) { ev.preventDefault(); t(); }
     });
-
-    S.surStatut(() => {
-      afficherStatut();
-      // Une synchro peut apporter une photo ou un prénom : on rafraîchit
-      // seulement les écrans du parent, jamais l'écran de l'enfant en séance.
-      if (!$("vue-depart").hidden) rendreDepart();
-      if (!$("vue-parent").hidden && !$("onglet-cartes").hidden && S.statut.etat === "ok") rendreCartes();
-    });
-    window.addEventListener("online", () => S.synchroniser());
-    setInterval(() => { if (!seance) S.synchroniser(); }, CONFIG.synchroToutesLes);
   }
 
   async function demarrerApplication() {
@@ -1029,7 +1063,6 @@
     rendreDepart();
     if (location.hash === "#parent") ouvrirParent();
     else afficherVue("vue-depart");
-    S.synchroniser();
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
       navigator.serviceWorker.register("../sw.js").catch(() => {});
     window.flashcards.pret = true;

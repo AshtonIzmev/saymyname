@@ -1,18 +1,15 @@
 {
   "name": "jeux-des-jumeaux",
-  "version": "1.1.0",
-  "description": "Écran de choix du jeu, Mot à Mot (attention conjointe, e-ink) et les flashcards des jumeaux (Leitner, voix du parent).",
+  "version": "1.2.0",
+  "description": "Écran de choix du jeu, Mot à Mot (attention conjointe, e-ink) et les flashcards des jumeaux (Leitner, voix du parent). Statique, sans serveur d'application.",
   "private": true,
   "license": "UNLICENSED",
-  "engines": { "node": ">=22.13" },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning serveur/serveur.js",
-    "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 'test/*.test.js'",
+    "test": "node --test --test-concurrency=1 'test/*.test.js'",
     "test:graphe": "node --test test/graphe.test.js",
     "test:navigateur": "node --test test/navigateur.test.js",
     "test:planificateur": "node --test test/planificateur.test.js",
-    "test:serveur": "node --disable-warning=ExperimentalWarning --test test/serveur.test.js",
-    "test:flashcards": "node --disable-warning=ExperimentalWarning --test test/flashcards.test.js"
+    "test:flashcards": "node --test test/flashcards.test.js"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

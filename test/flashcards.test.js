@@ -1,12 +1,28 @@
-// L'écran d'accueil et les flashcards, dans un vrai Chromium, servis par le
-// vrai serveur (IndexedDB, synchronisation, deux appareils).
+// L'écran d'accueil et les flashcards, dans un vrai Chromium, servis en
+// http comme par n'importe quel hébergement statique (IndexedDB, sauvegarde
+// exportée puis importée sur un deuxième appareil).
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
+const http = require("node:http");
 const path = require("node:path");
 const zlib = require("node:zlib");
-const { creerServeur } = require("../serveur/serveur.js");
+
+const RACINE = path.join(__dirname, "..");
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
+  ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
+
+// Un serveur de fichiers minimal, l'équivalent du nginx de production.
+function serveurStatique() {
+  return http.createServer((req, res) => {
+    let rel = decodeURIComponent(new URL(req.url, "http://x").pathname);
+    if (rel.endsWith("/")) rel += "index.html";
+    const fichier = path.join(RACINE, path.normalize(rel));
+    if (!fichier.startsWith(RACINE) || !fs.existsSync(fichier) || !fs.statSync(fichier).isFile()) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { "Content-Type": TYPES[path.extname(fichier)] || "application/octet-stream" });
+    fs.createReadStream(fichier).pipe(res);
+  });
+}
 
 function chargerPlaywright() {
   try { return require("playwright"); } catch (_) {}
@@ -14,11 +30,10 @@ function chargerPlaywright() {
   return require(path.join(execSync("npm root -g").toString().trim(), "playwright"));
 }
 
-let navigateur, serveur, base, dossier;
+let navigateur, serveur, base;
 
 before(async () => {
-  dossier = fs.mkdtempSync(path.join(os.tmpdir(), "flashcards-nav-"));
-  serveur = creerServeur({ dossier, secrets: [] });
+  serveur = serveurStatique();
   await new Promise((ok) => serveur.listen(0, ok));
   base = "http://127.0.0.1:" + serveur.address().port;
   navigateur = await chargerPlaywright().chromium.launch();
@@ -26,7 +41,6 @@ before(async () => {
 after(async () => {
   if (navigateur) await navigateur.close();
   await new Promise((ok) => serveur.close(ok));
-  fs.rmSync(dossier, { recursive: true, force: true });
 });
 
 async function ouvrir(chemin, taille) {
@@ -39,8 +53,6 @@ async function ouvrir(chemin, taille) {
   if (chemin.includes("flashcards")) await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
   return { page, contexte, erreurs };
 }
-
-const etatServeur = () => fetch(base + "/api/etat").then((r) => r.json());
 
 async function glisser(page, dx, dy) {
   const x = 640, y = 400;
@@ -166,11 +178,11 @@ test("séance « montrer » : écran nu, glissements notés, appui long → « f
   await page.keyboard.press("Escape");
   await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
 
-  // Les révisions sont parties au serveur.
-  await page.evaluate(() => Stockage.synchroniser());
-  const distant = await etatServeur();
-  assert.equal(distant.reviews.length, 3);
-  assert.equal(distant.deck_cards.find((e) => e.deck_id === "deck-1" && e.card_id === file[0]).box, 2);
+  // Tout est resté sur l'appareil, et survit à un rechargement.
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.equal(await page.evaluate(() => Object.keys(Stockage.etat.reviews).length), 3);
+  assert.equal(await page.evaluate((id) => Stockage.entree("deck-1", id).box, file[0]), 2);
   assert.deepEqual(erreurs, []);
   await contexte.close();
 });
@@ -217,9 +229,9 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   await contexte.close();
 });
 
-test("parent : ajouter une carte au téléphone, elle arrive sur la tablette et dans la séance suivante", async () => {
-  const telephone = await ouvrir("/flashcards/index.html#parent", { width: 390, height: 844 });
-  const tel = telephone.page;
+test("parent : ajouter une carte, elle apparaît dans la séance suivante", async () => {
+  const appareil = await ouvrir("/flashcards/index.html#parent", { width: 390, height: 844 });
+  const tel = appareil.page;
   await tel.waitForSelector("#vue-parent:not([hidden])");
   await tel.fill("#ajout-emoji", "🦔");
   await tel.fill("#ajout-mot", "Hérisson");
@@ -228,12 +240,11 @@ test("parent : ajouter une carte au téléphone, elle arrive sur la tablette et 
   await tel.uncheck("#ajout-paquets input[value='deck-2']");
   await tel.click("#ajout-enregistrer-carte");
   await tel.waitForFunction(() => /ajoutée/.test(document.getElementById("ajout-message").textContent));
-  await tel.evaluate(() => Stockage.synchroniser());
-  const distant = await etatServeur();
-  const herisson = distant.cards.find((c) => c.label === "hérisson");
-  assert.ok(herisson, "la carte est sur le serveur");
+  const herisson = await tel.evaluate(() => Object.values(Stockage.etat.cards).find((c) => c.label === "hérisson"));
+  assert.ok(herisson, "la carte est enregistrée");
   assert.equal(herisson.source, "emoji");
-  assert.deepEqual(distant.deck_cards.filter((e) => e.card_id === herisson.id).map((e) => [e.deck_id, e.box]), [["deck-1", 1]]);
+  assert.deepEqual(await tel.evaluate((id) => Object.values(Stockage.etat.deck_cards).filter((e) => e.card_id === id).map((e) => [e.deck_id, e.box]), herisson.id),
+    [["deck-1", 1]]);
 
   // Liste des cartes : filtre « à enregistrer » et fiche.
   await tel.click("[data-onglet='cartes']");
@@ -244,16 +255,13 @@ test("parent : ajouter une carte au téléphone, elle arrive sur la tablette et 
   assert.equal(await tel.isVisible("#fiche"), true);
   await tel.click("#fiche >> text=Fermer");
 
-  // La tablette synchronise et la montre à la séance suivante du jumeau 1.
-  const tablette = await ouvrir("/flashcards/index.html");
-  await tablette.page.evaluate(() => Stockage.synchroniser());
-  await commencerSeance(tablette.page, 0, "show");
-  const ids = await tablette.page.evaluate(() => flashcards.seance.file.map((c) => c.id));
+  // Elle est dans la séance suivante du jumeau 1.
+  await tel.click("#parent-fermer");
+  await commencerSeance(tel, 0, "show");
+  const ids = await tel.evaluate(() => flashcards.seance.file.map((c) => c.id));
   assert.ok(ids.includes(herisson.id), "la nouvelle carte passe en tête des nouvelles");
-  assert.deepEqual(telephone.erreurs, []);
-  assert.deepEqual(tablette.erreurs, []);
-  await telephone.contexte.close();
-  await tablette.contexte.close();
+  assert.deepEqual(appareil.erreurs, []);
+  await appareil.contexte.close();
 });
 
 test("parent : import en masse, réglages, tableau de bord", async () => {
@@ -287,13 +295,6 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
   }, tonton.images[0].media);
   assert.deepEqual(recadree, ["image/webp", 30, 30]);
 
-  // Synchro : les médias montent avant les cartes qui les citent.
-  await page.evaluate(() => Stockage.synchroniser());
-  assert.equal(await page.evaluate(() => Stockage.enAttente()), 0);
-  const media = await fetch(base + "/api/media/" + tonton.images[0].media);
-  assert.equal(media.status, 200);
-  assert.equal(media.headers.get("content-type"), "image/webp");
-
   // Tableau de bord : les deux enfants côte à côte.
   await page.click("[data-onglet='tableau']");
   assert.equal(await page.locator(".carte-stats").count(), 2);
@@ -317,5 +318,97 @@ test("plafond quotidien : une deuxième séance le même jour ne propose que le 
   assert.match(await page.textContent("#mode-info"), /Plafond du jour atteint/);
   await page.click("#mode-montrer");
   assert.equal(await page.isVisible("#vue-fini"), true);
+  await contexte.close();
+});
+
+test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tout y est", async () => {
+  // Appareil A : des progrès, une photo, une voix, un prénom.
+  const a = await ouvrir("/flashcards/index.html#parent");
+  await a.page.evaluate(async () => {
+    const photo = await Stockage.ajouterMedia(new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/webp" }));
+    const voix = await Stockage.ajouterMedia(new Blob([new Uint8Array([9, 8, 7])], { type: "audio/webm" }));
+    Stockage.enregistrerCarte({ id: "carte-a", type: "word", label: "papi", category: "famille", extras: { phrase: "papi" },
+      source: "photo", note: "", created_at: 0, suspended: false, suspended_until: null,
+      images: [{ id: "i1", media: photo, emoji: null, is_primary: true, order: 0 }],
+      audio: { id: "v1", media: voix, gain: 1.5, recorded_by: "papa" } }, ["deck-1"]);
+    Stockage.enregistrerPaquet(Object.assign({}, Stockage.etat.decks["deck-2"], { name: "Ilyas" }));
+    const e = Stockage.entree("deck-1", "word-chien");
+    Stockage.enregistrerEntree(Planificateur.noter(e, "knew", Date.now()));
+    Stockage.ajouterRevue({ id: "r-a", session_id: "s-a", deck_id: "deck-1", card_id: "word-chien", grade: "knew", mode: "show", at: Date.now() });
+  });
+  await a.page.click("[data-onglet='reglages']");
+  assert.match(await a.page.textContent("#sauvegarde-statut"), /Aucune sauvegarde/);
+  const [telechargement] = await Promise.all([a.page.waitForEvent("download"), a.page.click("#exporter")]);
+  assert.match(telechargement.suggestedFilename(), /^flashcards-\d{4}-\d{2}-\d{2}\.json$/);
+  const fichier = await telechargement.path();
+  const contenu = JSON.parse(fs.readFileSync(fichier, "utf8"));
+  assert.equal(contenu.format, "flashcards-sauvegarde");
+  assert.equal(Object.keys(contenu.medias).length, 2, "la photo et la voix sont dans le fichier");
+  await a.page.waitForFunction(() => /téléchargée/.test(document.getElementById("sauvegarde-message").textContent));
+  assert.match(await a.page.textContent("#sauvegarde-statut"), /Dernière sauvegarde/);
+
+  // Appareil B, vierge : importer remplace tout par la sauvegarde.
+  const b = await ouvrir("/flashcards/index.html#parent");
+  await b.page.click("[data-onglet='reglages']");
+  b.page.once("dialog", (d) => d.accept());
+  await b.page.setInputFiles("#importer-sauvegarde", fichier);
+  await b.page.waitForFunction(() => /importée/.test(document.getElementById("sauvegarde-message").textContent));
+  const recu = await b.page.evaluate(async () => {
+    const c = Stockage.etat.cards["carte-a"];
+    const photo = await Stockage.lireMedia(c.images[0].media);
+    const voix = await Stockage.lireMedia(c.audio.media);
+    return {
+      label: c.label, gain: c.audio.gain,
+      photo: [photo.type, [...new Uint8Array(await photo.arrayBuffer())]],
+      voix: [voix.type, [...new Uint8Array(await voix.arrayBuffer())]],
+      boite: Stockage.entree("deck-1", "word-chien").box,
+      revues: Object.keys(Stockage.etat.reviews),
+      prenom: Stockage.etat.decks["deck-2"].name,
+      membre: !!Stockage.entree("deck-1", "carte-a") && !Stockage.entree("deck-2", "carte-a"),
+    };
+  });
+  assert.deepEqual(recu, {
+    label: "papi", gain: 1.5, photo: ["image/webp", [1, 2, 3, 4]], voix: ["audio/webm", [9, 8, 7]],
+    boite: 2, revues: ["r-a"], prenom: "Ilyas", membre: true,
+  });
+  // Les tuiles de départ ont suivi, et tout survit au rechargement.
+  await b.page.reload();
+  await b.page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.equal(await b.page.evaluate(() => Stockage.etat.decks["deck-2"].name), "Ilyas");
+  assert.equal(await b.page.evaluate(async () => !!(await Stockage.lireMedia(Stockage.etat.cards["carte-a"].images[0].media))), true);
+
+  // Un fichier qui n'est pas une sauvegarde est refusé sans rien toucher.
+  b.page.once("dialog", (d) => d.accept());
+  await b.page.click("[data-onglet='reglages']");
+  await b.page.setInputFiles("#importer-sauvegarde", { name: "photo.json", mimeType: "application/json", buffer: Buffer.from('{"bonjour":1}') });
+  await b.page.waitForFunction(() => /pas une sauvegarde/.test(document.getElementById("sauvegarde-message").textContent));
+  assert.equal(await b.page.evaluate(() => !!Stockage.etat.cards["carte-a"]), true);
+
+  // Refuser la confirmation n'importe rien.
+  const c = await ouvrir("/flashcards/index.html#parent");
+  await c.page.click("[data-onglet='reglages']");
+  c.page.once("dialog", (d) => d.dismiss());
+  await c.page.setInputFiles("#importer-sauvegarde", fichier);
+  await c.page.waitForTimeout(300);
+  assert.equal(await c.page.evaluate(() => !!Stockage.etat.cards["carte-a"]), false);
+
+  assert.deepEqual(a.erreurs, []);
+  assert.deepEqual(b.erreurs, []);
+  await Promise.all([a.contexte.close(), b.contexte.close(), c.contexte.close()]);
+});
+
+test("rappel de sauvegarde au départ, seulement quand il y a des progrès à perdre", async () => {
+  const { page, contexte } = await ouvrir("/flashcards/index.html");
+  assert.equal((await page.textContent("#statut-depart")).trim(), "", "rien à perdre, pas de rappel");
+  await page.evaluate(() => {
+    Stockage.ajouterRevue({ id: "r", session_id: "s", deck_id: "deck-1", card_id: "word-chien", grade: "knew", mode: "show", at: Date.now() });
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.match(await page.textContent("#statut-depart"), /Aucune sauvegarde/);
+  await page.evaluate(() => localStorage.setItem("flashcards.derniereSauvegarde", String(Date.now() - 2 * 86400000)));
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.equal((await page.textContent("#statut-depart")).trim(), "", "sauvegarde récente : pas de rappel");
   await contexte.close();
 });

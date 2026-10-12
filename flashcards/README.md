@@ -57,8 +57,8 @@ Au clavier (développement) : flèches, `Échap` (fin), `Espace` (voix), `1` / `
 
 ## Côté parent
 
-*Parent*, en haut à droite du départ, ou directement `flashcards/index.html#parent`
-(à mettre en favori sur le téléphone).
+*Parent*, en haut à droite du départ, ou directement `flashcards/index.html#parent`.
+Tout se fait sur la tablette : elle a l'appareil photo et le micro.
 
 - **Ajouter** (moins de 30 s) : prendre ou choisir une photo (recadrée au carré,
   1024 px, WebP) ou taper un emoji ; le mot ; *maintenir* le bouton pour enregistrer
@@ -72,8 +72,8 @@ Au clavier (développement) : flèches, `Échap` (fin), `Espace` (voix), `1` / `
 - **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
   reconnus en 7 jours, jamais montrées, séances, durée moyenne, fin par plafond ou
   par le parent, cartes en échec 3 fois de suite.
-- **Réglages** : prénom, photo et plafond de chaque enfant ; secret de l'appareil ;
-  nom de la voix ; import en masse.
+- **Réglages** : prénom, photo et plafond de chaque enfant ; **sauvegarde**
+  (exporter, importer) ; nom de la voix ; images en masse.
 
 ### Import en masse
 
@@ -126,34 +126,46 @@ dans les deux paquets. Les emoji sont des remplaçants : les photos du parent et
 dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une image).
 `H` (muet en français) et `X` (pas d'emoji xylophone) portent une note.
 
-## Synchronisation et hors ligne
+## Données et sauvegarde
 
-Tout vit sur l'appareil (IndexedDB) : une séance n'attend jamais le réseau. Chaque
-changement est mis en file ; dès que le serveur répond, les médias partent d'abord,
-puis un lot avec les cartes, paquets, boîtes, séances et révisions. Le serveur
-range et ne recalcule rien ; chaque objet porte un `updated_at` et la version la
-plus récente l'emporte, des deux côtés. Synchro au démarrage, à l'ouverture du côté
-parent, après chaque carte ajoutée et chaque séance, au retour du réseau et chaque minute
-hors séance.
+Pas de serveur. Tout vit sur l'appareil, dans le stockage du navigateur
+(IndexedDB) : cartes, photos, voix, boîtes, séances, révisions. Une séance n'attend
+jamais le réseau, et rien ne sort de la tablette. L'application demande au
+navigateur de ne pas effacer ces données pour gagner de la place.
 
-Chaque appareil a son secret (`SECRETS` côté serveur, *Réglages → Secret* côté
-appareil).
+C'est aussi le **seul exemplaire**. Effacer les données de Chrome, réinitialiser ou
+perdre la tablette, et tout est perdu. D'où la sauvegarde, dans *Parent → Réglages* :
+
+- **Exporter** télécharge un fichier `flashcards-AAAA-MM-JJ.json` (dossier
+  *Téléchargements*) : tout l'état, avec chaque photo et chaque voix dedans.
+  Compter quelques dizaines de Mo une fois le paquet rempli de photos.
+  Le garder en lieu sûr (Drive, ordinateur, clé USB).
+- **Importer**, sur un autre appareil (ou le même après une réinitialisation),
+  après confirmation, **remplace tout** ce qu'il contient par la sauvegarde. Ce
+  n'est pas une fusion : deux appareils ne doivent pas être utilisés en parallèle,
+  le dernier importé gagne.
+
+Les réglages affichent la date de la dernière sauvegarde. Tant qu'il y a des
+progrès à perdre et pas de sauvegarde depuis 14 jours, le départ le rappelle d'une
+ligne discrète.
 
 ## La tablette en kiosque
 
 [Fully Kiosk Browser](https://www.fully-kiosk.com/) sur la tablette Android :
 
-- *Start URL* : `https://<serveur>/` (l'écran de choix du jeu) ou
-  `https://<serveur>/flashcards/index.html` pour arriver directement au départ ;
+- *Start URL* : `https://<hébergement>/` (l'écran de choix du jeu) ou
+  `https://<hébergement>/flashcards/index.html` pour arriver directement au départ ;
 - *Kiosk Mode* activé, avec un PIN de sortie ; navigation Android masquée,
   écran épinglé ;
 - *Screen brightness* plafonnée, *Keep screen on* activé ;
-- *Enable Microphone Access* (pour enregistrer depuis la tablette) ;
+- *Enable Microphone Access* et l'accès à la caméra (pour ajouter des cartes) ;
+- autoriser les téléchargements et le choix de fichiers (pour exporter et importer
+  la sauvegarde, et pour les photos) ;
 - désactiver la navigation par glissement (*Swipe Navigation*) et *Pull to Refresh*,
   pour que les glissements de notation ne soient jamais interceptés.
 
-Ouvrir une fois les flashcards en ligne pour que la tablette garde l'application et
-les médias en cache.
+Ouvrir une fois l'application en ligne : le service worker la garde ensuite pour
+démarrer sans réseau.
 
 ## Choix faits là où le cahier des charges laissait de la marge
 
@@ -173,4 +185,4 @@ les médias en cache.
 Prévu en v3 par le cahier des charges : minuscules, chiffres 6–10, choix à trois
 images, syllabes. Les questions ouvertes restent ouvertes : même jeu de départ pour
 les deux (c'est le cas aujourd'hui), voix multiples (un nom de voix est enregistré
-avec chaque carte, mais une seule voix par carte), hébergement du serveur.
+avec chaque carte, mais une seule voix par carte).
