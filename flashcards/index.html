@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Flashcards</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icones/icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ======================= Départ : choisir l'enfant ======================= -->
+<section id="vue-depart" class="vue parent">
+  <header class="entete">
+    <a class="lien" id="lien-jeux" href="../index.html">← Jeux</a>
+    <h1>Flashcards</h1>
+    <button type="button" class="lien" id="ouvrir-parent">Parent</button>
+  </header>
+  <div id="jumeaux" class="jumeaux"></div>
+  <p id="statut-depart" class="discret centre"></p>
+</section>
+
+<!-- ======================= Choisir le mode, et c'est parti ================= -->
+<section id="vue-mode" class="vue parent" hidden>
+  <header class="entete">
+    <button type="button" class="lien" id="mode-retour">← Retour</button>
+    <h1 id="mode-titre"></h1>
+    <span></span>
+  </header>
+  <div class="segments" id="filtre" role="radiogroup" aria-label="Cartes de la séance">
+    <button type="button" role="radio" data-filtre="tout" aria-checked="true">Tout</button>
+    <button type="button" role="radio" data-filtre="lettres" aria-checked="false">Lettres</button>
+    <button type="button" role="radio" data-filtre="nombres" aria-checked="false">Chiffres</button>
+  </div>
+  <div class="modes">
+    <button type="button" class="tuile-mode" id="mode-montrer" data-mode="show">
+      <span class="tuile-titre">Montrer</span><span class="tuile-sous">« c'est quoi ? »</span>
+    </button>
+    <button type="button" class="tuile-mode" id="mode-choisir" data-mode="choice">
+      <span class="tuile-titre">Choisir</span><span class="tuile-sous">« où est… ? »</span>
+    </button>
+  </div>
+  <p id="mode-info" class="discret centre"></p>
+</section>
+
+<!-- ======================= L'écran de l'enfant : une chose à la fois ======== -->
+<section id="vue-enfant" class="vue enfant" hidden>
+  <div id="scene"></div>
+</section>
+
+<section id="vue-fini" class="vue enfant" hidden>
+  <p class="fini">fini</p>
+</section>
+
+<!-- ======================= Côté parent ======================= -->
+<section id="vue-parent" class="vue parent" hidden>
+  <header class="entete">
+    <button type="button" class="lien" id="parent-fermer">← Séances</button>
+    <h1>Parent</h1>
+    <span id="pastille-synchro" class="pastille" title="Synchronisation"></span>
+  </header>
+  <nav class="onglets" id="onglets">
+    <button type="button" data-onglet="ajouter" aria-selected="true">Ajouter</button>
+    <button type="button" data-onglet="cartes" aria-selected="false">Cartes</button>
+    <button type="button" data-onglet="tableau" aria-selected="false">Tableau</button>
+    <button type="button" data-onglet="reglages" aria-selected="false">Réglages</button>
+  </nav>
+
+  <!-- Ajouter une carte : moins de 30 secondes -->
+  <form id="onglet-ajouter" class="onglet formulaire" autocomplete="off">
+    <div class="segments" id="ajout-type" role="radiogroup" aria-label="Type de carte">
+      <button type="button" role="radio" data-type="word" aria-checked="true">Mot</button>
+      <button type="button" role="radio" data-type="number" aria-checked="false">Chiffre</button>
+      <button type="button" role="radio" data-type="letter" aria-checked="false">Lettre</button>
+    </div>
+
+    <div class="photo-zone">
+      <label class="apercu" id="ajout-apercu" for="ajout-photo"><span>Prendre ou choisir une photo</span></label>
+      <input type="file" id="ajout-photo" accept="image/*" capture="environment" hidden>
+      <label class="ligne petite">ou un emoji <input type="text" id="ajout-emoji" maxlength="16" inputmode="text"></label>
+    </div>
+
+    <label class="champ" data-pour="word letter"><span id="ajout-mot-libelle">Mot</span>
+      <input type="text" id="ajout-mot" required autocapitalize="none" spellcheck="false" placeholder="chien">
+    </label>
+    <label class="champ" data-pour="word"><span>La voix dit</span>
+      <input type="text" id="ajout-phrase" autocapitalize="none" placeholder="le chien">
+    </label>
+    <label class="champ" data-pour="word"><span>Catégorie</span>
+      <select id="ajout-categorie"></select>
+    </label>
+    <label class="champ" data-pour="number" hidden><span>Chiffre</span>
+      <select id="ajout-chiffre"></select>
+    </label>
+    <label class="champ" data-pour="letter" hidden><span>Lettre</span>
+      <select id="ajout-lettre"></select>
+    </label>
+    <label class="champ" data-pour="letter" hidden><span>Son de la lettre</span>
+      <input type="text" id="ajout-son" autocapitalize="none" placeholder="beu">
+    </label>
+
+    <div class="voix">
+      <button type="button" class="bouton enregistrer" id="ajout-enregistrer">Maintenir pour enregistrer</button>
+      <button type="button" class="bouton secondaire" id="ajout-ecouter" disabled>Écouter</button>
+    </div>
+
+    <fieldset class="champ"><legend>Paquets</legend><div id="ajout-paquets" class="cases"></div></fieldset>
+    <label class="champ"><span>Source</span><select id="ajout-source"></select></label>
+    <label class="champ"><span>Note</span><input type="text" id="ajout-note"></label>
+
+    <button type="submit" class="bouton principal" id="ajout-enregistrer-carte">Enregistrer la carte</button>
+    <p id="ajout-message" class="message" role="status"></p>
+  </form>
+
+  <!-- Les cartes -->
+  <div id="onglet-cartes" class="onglet" hidden>
+    <div class="filtres">
+      <select id="filtre-type">
+        <option value="">Tous types</option><option value="word">Mots</option>
+        <option value="number">Chiffres</option><option value="letter">Lettres</option>
+      </select>
+      <select id="filtre-boite"></select>
+      <select id="filtre-source"></select>
+      <select id="filtre-etat">
+        <option value="">Toutes</option><option value="sans-voix">À enregistrer</option>
+        <option value="signalees">Signalées</option><option value="suspendues">Suspendues</option>
+      </select>
+      <input type="search" id="filtre-texte" placeholder="Chercher">
+    </div>
+    <p id="cartes-compte" class="discret"></p>
+    <ul id="liste-cartes" class="liste"></ul>
+  </div>
+
+  <!-- Tableau de bord -->
+  <div id="onglet-tableau" class="onglet" hidden></div>
+
+  <!-- Réglages -->
+  <div id="onglet-reglages" class="onglet" hidden>
+    <h2>Les enfants</h2>
+    <div id="reglages-paquets"></div>
+
+    <h2>Synchronisation</h2>
+    <p id="synchro-statut" class="discret"></p>
+    <label class="champ"><span>Secret de cet appareil</span><input type="password" id="secret" autocomplete="off"></label>
+    <button type="button" class="bouton" id="synchroniser">Synchroniser maintenant</button>
+
+    <h2>Voix</h2>
+    <label class="champ"><span>Enregistré par</span><input type="text" id="voix-nom" placeholder="papa"></label>
+
+    <h2>Import en masse</h2>
+    <p class="discret">Un dossier d'images nommées par leur mot : <code>chien.jpg</code> → « chien ».
+      <code>chien-2.jpg</code> ajoute une deuxième image à la même carte.</p>
+    <label class="champ"><span>Source</span><select id="import-source"></select></label>
+    <label class="champ"><span>Catégorie</span><select id="import-categorie"></select></label>
+    <fieldset class="champ"><legend>Paquets</legend><div id="import-paquets" class="cases"></div></fieldset>
+    <div class="voix">
+      <label class="bouton">Choisir un dossier<input type="file" id="import-dossier" webkitdirectory multiple hidden></label>
+      <label class="bouton secondaire">ou des images<input type="file" id="import-fichiers" accept="image/*" multiple hidden></label>
+    </div>
+    <p id="import-message" class="message" role="status"></p>
+  </div>
+</section>
+
+<dialog id="fiche"></dialog>
+
+<script src="planificateur.js"></script>
+<script src="graines.js"></script>
+<script src="stockage.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
