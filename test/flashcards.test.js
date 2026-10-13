@@ -145,7 +145,7 @@ test("séance « montrer » : écran nu, glissements notés, appui long → « f
   const visuel = await page.locator("#scene .visuel").boundingBox();
   assert.ok(visuel.height >= 0.6 * 800, "l'image occupe ~70 % de l'écran : " + visuel.height);
 
-  // Tap sur l'image : la voix, sans note ni changement de carte.
+  // Tap sur l'image : rien ne se passe, ni note ni changement de carte.
   await page.click("#scene .visuel");
   assert.equal(await page.evaluate(() => flashcards.seance.i), 0);
 
@@ -235,7 +235,6 @@ test("parent : ajouter une carte, elle apparaît dans la séance suivante", asyn
   await tel.waitForSelector("#vue-parent:not([hidden])");
   await tel.fill("#ajout-emoji", "🦔");
   await tel.fill("#ajout-mot", "Hérisson");
-  await tel.fill("#ajout-phrase", "le hérisson");
   await tel.selectOption("#ajout-categorie", "animal");
   await tel.uncheck("#ajout-paquets input[value='deck-2']");
   await tel.click("#ajout-enregistrer-carte");
@@ -246,11 +245,10 @@ test("parent : ajouter une carte, elle apparaît dans la séance suivante", asyn
   assert.deepEqual(await tel.evaluate((id) => Object.values(Stockage.etat.deck_cards).filter((e) => e.card_id === id).map((e) => [e.deck_id, e.box]), herisson.id),
     [["deck-1", 1]]);
 
-  // Liste des cartes : filtre « à enregistrer » et fiche.
+  // Liste des cartes : recherche et fiche.
   await tel.click("[data-onglet='cartes']");
   await tel.fill("#filtre-texte", "hérisson");
   assert.equal(await tel.locator("#liste-cartes li").count(), 1);
-  assert.match(await tel.textContent("#liste-cartes li"), /à enregistrer/);
   await tel.click("#liste-cartes li");
   assert.equal(await tel.isVisible("#fiche"), true);
   await tel.click("#fiche >> text=Fermer");
@@ -322,15 +320,13 @@ test("plafond quotidien : une deuxième séance le même jour ne propose que le 
 });
 
 test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tout y est", async () => {
-  // Appareil A : des progrès, une photo, une voix, un prénom.
+  // Appareil A : des progrès, une photo, un prénom.
   const a = await ouvrir("/flashcards/index.html#parent");
   await a.page.evaluate(async () => {
     const photo = await Stockage.ajouterMedia(new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/webp" }));
-    const voix = await Stockage.ajouterMedia(new Blob([new Uint8Array([9, 8, 7])], { type: "audio/webm" }));
-    Stockage.enregistrerCarte({ id: "carte-a", type: "word", label: "papi", category: "famille", extras: { phrase: "papi" },
+    Stockage.enregistrerCarte({ id: "carte-a", type: "word", label: "papi", category: "famille", extras: {},
       source: "photo", note: "", created_at: 0, suspended: false, suspended_until: null,
-      images: [{ id: "i1", media: photo, emoji: null, is_primary: true, order: 0 }],
-      audio: { id: "v1", media: voix, gain: 1.5, recorded_by: "papa" } }, ["deck-1"]);
+      images: [{ id: "i1", media: photo, emoji: null, is_primary: true, order: 0 }] }, ["deck-1"]);
     Stockage.enregistrerPaquet(Object.assign({}, Stockage.etat.decks["deck-2"], { name: "Ilyas" }));
     const e = Stockage.entree("deck-1", "word-chien");
     Stockage.enregistrerEntree(Planificateur.noter(e, "knew", Date.now()));
@@ -343,7 +339,7 @@ test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tou
   const fichier = await telechargement.path();
   const contenu = JSON.parse(fs.readFileSync(fichier, "utf8"));
   assert.equal(contenu.format, "flashcards-sauvegarde");
-  assert.equal(Object.keys(contenu.medias).length, 2, "la photo et la voix sont dans le fichier");
+  assert.equal(Object.keys(contenu.medias).length, 1, "la photo est dans le fichier");
   await a.page.waitForFunction(() => /téléchargée/.test(document.getElementById("sauvegarde-message").textContent));
   assert.match(await a.page.textContent("#sauvegarde-statut"), /Dernière sauvegarde/);
 
@@ -356,11 +352,9 @@ test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tou
   const recu = await b.page.evaluate(async () => {
     const c = Stockage.etat.cards["carte-a"];
     const photo = await Stockage.lireMedia(c.images[0].media);
-    const voix = await Stockage.lireMedia(c.audio.media);
     return {
-      label: c.label, gain: c.audio.gain,
+      label: c.label,
       photo: [photo.type, [...new Uint8Array(await photo.arrayBuffer())]],
-      voix: [voix.type, [...new Uint8Array(await voix.arrayBuffer())]],
       boite: Stockage.entree("deck-1", "word-chien").box,
       revues: Object.keys(Stockage.etat.reviews),
       prenom: Stockage.etat.decks["deck-2"].name,
@@ -368,7 +362,7 @@ test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tou
     };
   });
   assert.deepEqual(recu, {
-    label: "papi", gain: 1.5, photo: ["image/webp", [1, 2, 3, 4]], voix: ["audio/webm", [9, 8, 7]],
+    label: "papi", photo: ["image/webp", [1, 2, 3, 4]],
     boite: 2, revues: ["r-a"], prenom: "Ilyas", membre: true,
   });
   // Les tuiles de départ ont suivi, et tout survit au rechargement.
@@ -410,5 +404,45 @@ test("rappel de sauvegarde au départ, seulement quand il y a des progrès à pe
   await page.reload();
   await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
   assert.equal((await page.textContent("#statut-depart")).trim(), "", "sauvegarde récente : pas de rappel");
+  await contexte.close();
+});
+
+test("aucun son : ni voix de synthèse, ni micro, ni enregistrement, nulle part dans le code", () => {
+  const interdits = /speechSynthesis|SpeechSynthesisUtterance|AudioContext|MediaRecorder|getUserMedia|<audio|new Audio\(/;
+  const fichiers = [];
+  (function parcourir(dossier) {
+    for (const f of fs.readdirSync(dossier, { withFileTypes: true })) {
+      if (f.name === "node_modules" || f.name === ".git" || f.name === ".vercel" || f.name === "test") continue;
+      const chemin = path.join(dossier, f.name);
+      if (f.isDirectory()) parcourir(chemin);
+      else if (/\.(html|js|css|webmanifest)$/.test(f.name)) fichiers.push(chemin);
+    }
+  })(RACINE);
+  assert.ok(fichiers.length >= 8, "les fichiers sont trouvés : " + fichiers.length);
+  for (const f of fichiers) assert.doesNotMatch(fs.readFileSync(f, "utf8"), interdits, path.relative(RACINE, f));
+});
+
+test("ancienne sauvegarde avec une voix : la voix est retirée, le reste est intact", async () => {
+  const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html#parent");
+  const sauvegarde = await page.evaluate(async () => {
+    const e = JSON.parse(JSON.stringify(Stockage.etat));
+    e.cards["word-chien"].audio = { id: "v1", media: "m-voix", gain: 1.5, recorded_by: "papa" };
+    e.cards["word-chat"].audio = null;
+    const octets = (a) => btoa(String.fromCharCode(...a));
+    return JSON.stringify({ format: "flashcards-sauvegarde", version: 1, exporte_le: Date.now(), etat: e,
+      medias: { "m-voix": "data:audio/webm;base64," + octets([9, 8, 7]), "m-photo": "data:image/webp;base64," + octets([1, 2, 3]) } });
+  });
+  await page.click("[data-onglet='reglages']");
+  page.once("dialog", (d) => d.accept());
+  await page.setInputFiles("#importer-sauvegarde", { name: "ancienne.json", mimeType: "application/json", buffer: Buffer.from(sauvegarde) });
+  await page.waitForFunction(() => /importée/.test(document.getElementById("sauvegarde-message").textContent));
+  assert.match(await page.textContent("#sauvegarde-message"), /1 photos\./);
+  const apres = await page.evaluate(async () => ({
+    chien: "audio" in Stockage.etat.cards["word-chien"], chat: "audio" in Stockage.etat.cards["word-chat"],
+    voix: await Stockage.lireMedia("m-voix"), photo: !!(await Stockage.lireMedia("m-photo")),
+    cartes: Object.keys(Stockage.etat.cards).length,
+  }));
+  assert.deepEqual(apres, { chien: false, chat: false, voix: null, photo: true, cartes: 141 });
+  assert.deepEqual(erreurs, []);
   await contexte.close();
 });

@@ -6,8 +6,8 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 
 - Le parent est toujours là : l'application lui fait signe, elle n'occupe jamais
   l'enfant seule.
-- Rien ne récompense le tapotement : pas d'animation, pas de bruitage, pas de score
-  visible des enfants.
+- Rien ne récompense le tapotement : pas d'animation, pas de score visible des
+  enfants. Et aucun son : l'application est muette, c'est le parent qui parle.
 - Une chose à la fois : une grande image, un mot, rien d'autre.
 - Un paquet par jumeau, jamais partagé, jamais comparé.
 
@@ -21,16 +21,16 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 
 ### Montrer (expressif)
 
-Une carte, l'image sur ~70 % de l'écran, le mot dessous. Toucher l'image fait
-entendre la voix une fois. Le parent demande « c'est quoi ? » puis note d'un geste.
+Une carte, l'image sur ~70 % de l'écran, le mot dessous. Le parent demande
+« c'est quoi ? » puis note d'un geste.
 La carte ne change jamais toute seule.
 
 ### Choisir (réceptif)
 
-Deux images côte à côte, sans mot. La voix demande la cible. L'enfant touche :
+Deux images côte à côte, sans mot. Le parent demande « où est… ? ». L'enfant touche :
 
-- **juste** : l'autre image s'efface, le mot apparaît sous la cible, la voix le redit ;
-- **faux** : rien pendant une seconde, puis la question revient.
+- **juste** : l'autre image s'efface, le mot apparaît sous la cible ;
+- **faux** : rien pendant une seconde, puis il peut réessayer.
 
 La note est automatique (juste du premier coup = *su*, au deuxième = *hésitant*,
 deux erreurs = *pas su*). Le distracteur est du même type mais d'une autre
@@ -48,40 +48,36 @@ Invisibles des enfants : aucun bouton sur leur écran.
 | Glisser ← | **Pas su** : retour en boîte 1 |
 | Glisser ↓ | *Choisir* seulement : suivante, avec la note automatique |
 | Appui long | Fin de séance → « fini » |
-| Tap à deux doigts | Réécouter, sans noter |
 
 En mode *Choisir*, glisser →, ↑ ou ← remplace la note automatique.
 
-Au clavier (développement) : flèches, `Échap` (fin), `Espace` (voix), `1` / `2`
-(toucher l'image de gauche / droite).
+Au clavier (développement) : flèches, `Échap` (fin), `1` / `2` (toucher l'image
+de gauche / droite).
 
 ## Côté parent
 
 *Parent*, en haut à droite du départ, ou directement `flashcards/index.html#parent`.
-Tout se fait sur la tablette : elle a l'appareil photo et le micro.
+Tout se fait sur la tablette : elle a l'appareil photo.
 
 - **Ajouter** (moins de 30 s) : prendre ou choisir une photo (recadrée au carré,
-  1024 px, WebP) ou taper un emoji ; le mot ; *maintenir* le bouton pour enregistrer
-  la voix, avec l'article (« le chien ») ; les paquets ; enregistrer. La carte entre
+  1024 px, WebP) ou taper un emoji ; le mot ; les paquets ; enregistrer. La carte entre
   en boîte 1 et sera dans la prochaine séance (les dernières ajoutées passent en
   tête des nouvelles).
-- **Cartes** : filtres par type, boîte, source, « à enregistrer », signalées,
-  suspendues. Toucher une carte ouvre sa fiche : images (choisir la principale, en
-  ajouter une), mot, voix (réenregistrer), paquets, suspendre (un mois ou
+- **Cartes** : filtres par type, boîte, source, signalées, suspendues. Toucher une carte ouvre sa fiche : images (choisir la principale, en
+  ajouter une), mot, paquets, suspendre (un mois ou
   indéfiniment), historique des révisions.
 - **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
   reconnus en 7 jours, jamais montrées, séances, durée moyenne, fin par plafond ou
   par le parent, cartes en échec 3 fois de suite.
 - **Réglages** : prénom, photo et plafond de chaque enfant ; **sauvegarde**
-  (exporter, importer) ; nom de la voix ; images en masse.
+  (exporter, importer) ; images en masse.
 
 ### Import en masse
 
 Un dossier d'images nommées par leur mot : `chien.jpg` → carte « chien ».
 `chien-2.jpg` ajoute une deuxième image à la même carte (ou à la carte « chien »
 existante). Choisir la source (MultiPic, BOSS, photo…), la catégorie et les paquets
-avant l'import. Les cartes importées n'ont pas de voix : elles apparaissent dans
-« à enregistrer ».
+avant l'import.
 
 ## Le planificateur
 
@@ -103,19 +99,21 @@ mélangées sans jamais deux fois le même mot à la suite. Le plafond est quoti
 une deuxième séance le même jour ne propose que le reste.
 
 Une carte *su* trois fois de suite en boîte 4 passe en boîte 5. Une carte ratée 4
-fois de suite en boîte 1 est **signalée**, jamais retirée : reprendre la photo,
-réenregistrer la voix ou la suspendre un mois.
+fois de suite en boîte 1 est **signalée**, jamais retirée : reprendre la photo
+ou la suspendre un mois.
 
 Chaque mot peut avoir plusieurs images : la principale jusqu'à la boîte 3, puis
 toutes à tour de rôle, pour que l'enfant apprenne le mot et pas l'image.
 
-## La voix
+## Pas de son
 
-L'enregistrement du parent, normalisé au même niveau sonore (gain calculé à
-l'enregistrement, appliqué à la lecture). Tant qu'une carte n'est pas enregistrée,
-une voix de synthèse française la remplace, et la carte reste marquée « à
-enregistrer ». Pour les lettres, c'est le **son** qui compte (« beu »), pas le nom ;
-la voix de synthèse s'en approche mal, ce sont les premières à enregistrer.
+L'application ne fait aucun bruit et n'utilise pas le micro : ni voix de synthèse,
+ni enregistrement du parent. C'est le parent qui dit le mot, ou la question. Un
+test (`test/flashcards.test.js`) échoue si une API audio réapparaît dans le code.
+Les anciennes sauvegardes qui contiennent des voix s'importent quand même : les
+enregistrements sont retirés, les cartes et les progrès restent. Au démarrage,
+l'application retire aussi les voix qu'une ancienne version aurait gardées sur
+l'appareil.
 
 ## Jeu de départ
 
@@ -129,7 +127,7 @@ dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une im
 ## Données et sauvegarde
 
 Pas de serveur. Tout vit sur l'appareil, dans le stockage du navigateur
-(IndexedDB) : cartes, photos, voix, boîtes, séances, révisions. Une séance n'attend
+(IndexedDB) : cartes, photos, boîtes, séances, révisions. Une séance n'attend
 jamais le réseau, et rien ne sort de la tablette. L'application demande au
 navigateur de ne pas effacer ces données pour gagner de la place.
 
@@ -137,7 +135,7 @@ C'est aussi le **seul exemplaire**. Effacer les données de Chrome, réinitialis
 perdre la tablette, et tout est perdu. D'où la sauvegarde, dans *Parent → Réglages* :
 
 - **Exporter** télécharge un fichier `flashcards-AAAA-MM-JJ.json` (dossier
-  *Téléchargements*) : tout l'état, avec chaque photo et chaque voix dedans.
+  *Téléchargements*) : tout l'état, avec chaque photo dedans.
   Compter quelques dizaines de Mo une fois le paquet rempli de photos.
   Le garder en lieu sûr (Drive, ordinateur, clé USB).
 - **Importer**, sur un autre appareil (ou le même après une réinitialisation),
@@ -158,7 +156,7 @@ ligne discrète.
 - *Kiosk Mode* activé, avec un PIN de sortie ; navigation Android masquée,
   écran épinglé ;
 - *Screen brightness* plafonnée, *Keep screen on* activé ;
-- *Enable Microphone Access* et l'accès à la caméra (pour ajouter des cartes) ;
+- l'accès à la caméra (pour ajouter des cartes) ; le micro n'est pas nécessaire ;
 - autoriser les téléchargements et le choix de fichiers (pour exporter et importer
   la sauvegarde, et pour les photos) ;
 - désactiver la navigation par glissement (*Swipe Navigation*) et *Pull to Refresh*,
@@ -175,8 +173,6 @@ démarrer sans réseau.
   disparaître pour toujours.
 - **Série vers la boîte 5** : `streak` compte les *su* d'affilée dans la boîte
   courante ; il retombe à zéro à chaque changement de boîte ou note non-*su*.
-- **Voix en mode Choisir** : l'enregistrement dit le mot (« le chien ») ; la question
-  « où est… ? » vient du parent. Seule la voix de synthèse pose la question.
 - **Retirer un enfant d'une carte** n'est pas proposé (cela effacerait son
   historique) : on suspend la carte.
 
@@ -184,5 +180,4 @@ démarrer sans réseau.
 
 Prévu en v3 par le cahier des charges : minuscules, chiffres 6–10, choix à trois
 images, syllabes. Les questions ouvertes restent ouvertes : même jeu de départ pour
-les deux (c'est le cas aujourd'hui), voix multiples (un nom de voix est enregistré
-avec chaque carte, mais une seule voix par carte).
+les deux (c'est le cas aujourd'hui).

@@ -2,7 +2,7 @@
 // démarre sans réseau. Les données et les médias ne passent pas par ici :
 // ils vivent dans IndexedDB (voir flashcards/stockage.js).
 // Changer VERSION à chaque publication pour purger l'ancienne copie.
-const VERSION = "jeux-v2";
+const VERSION = "jeux-v3";
 const COQUILLE = [
   "./",
   "index.html",

@@ -1,6 +1,6 @@
 // ==========================================================================
 // STOCKAGE. Tout vit sur l'appareil, dans IndexedDB : cartes, paquets,
-// boîtes, séances, révisions, et à part les médias (photos, voix). Aucun
+// boîtes, séances, révisions, et à part les médias (photos). Aucun
 // serveur. Pour sauvegarder ou passer à un autre appareil : exporter un
 // fichier unique, puis l'importer de l'autre côté.
 // ==========================================================================
@@ -70,12 +70,29 @@
     }
   }
 
+  // Les anciennes versions enregistraient la voix du parent sur chaque carte :
+  // il n'y a plus de son. On retire ces enregistrements de l'appareil ; le
+  // résultat dit si l'état a changé et quels médias ont été supprimés.
+  async function retirerAnciensSons() {
+    const medias = new Set();
+    let modifie = false;
+    for (const c of Object.values(etat.cards)) {
+      if (!("audio" in c)) continue;
+      if (c.audio && c.audio.media) { medias.add(c.audio.media); await supprimerMedia(c.audio.media); }
+      delete c.audio;
+      modifie = true;
+    }
+    return { modifie, medias };
+  }
+
   async function charger() {
     db = await ouvrirBase();
     etat = db ? await requete(magasin("etat", "readonly").get("etat")).catch(() => null) : null;
     if (!etat) {
       etat = etatVide();
       semer();
+      await sauver();
+    } else if ((await retirerAnciensSons()).modifie) {
       await sauver();
     }
     // Demander au navigateur de ne pas effacer ces données pour faire de la
@@ -126,7 +143,7 @@
 
   function entree(deckId, cardId) { return etat.deck_cards[cleEntree(deckId, cardId)] || null; }
 
-  // ---------- Médias (photos, voix) ----------
+  // ---------- Médias (photos) ----------
 
   async function mettreMedia(id, blob) {
     if (db) await requete(magasin("media", "readwrite").put(blob, id));
@@ -138,6 +155,12 @@
     const id = nouvelId();
     await mettreMedia(id, blob);
     return id;
+  }
+
+  async function supprimerMedia(id) {
+    if (db) await requete(magasin("media", "readwrite").delete(id)).catch(() => {});
+    else memoire.delete(id);
+    if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); }
   }
 
   async function lireMedia(id) {
@@ -163,7 +186,6 @@
     const ids = new Set();
     for (const c of Object.values(e.cards)) {
       for (const im of c.images || []) if (im.media) ids.add(im.media);
-      if (c.audio && c.audio.media) ids.add(c.audio.media);
     }
     for (const d of Object.values(e.decks)) if (d.photo) ids.add(d.photo);
     return ids;
@@ -180,7 +202,7 @@
     });
   }
 
-  // Un seul fichier JSON : l'état complet, et chaque photo ou voix encodée
+  // Un seul fichier JSON : l'état complet, et chaque photo encodée
   // en data URL. Lisible, sans dépendance, réimportable tel quel.
   async function exporter() {
     const medias = {};
@@ -218,11 +240,12 @@
     urls.clear();
     etat = etatVide();
     for (const sorte of SORTES) Object.assign(etat[sorte], s.etat[sorte]);
+    const { medias: sons } = await retirerAnciensSons();
     await sauver();
     return {
       cartes: Object.keys(etat.cards).length,
       revues: Object.keys(etat.reviews).length,
-      medias: Object.keys(blobs).length,
+      medias: Object.keys(blobs).filter((id) => !sons.has(id)).length,
       exporte_le: s.exporte_le,
     };
   }

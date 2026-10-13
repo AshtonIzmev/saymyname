@@ -175,7 +175,6 @@ test("jeu de départ : identifiants uniques, minuscules, 26 lettres, chiffres 1 
   for (const c of mots) {
     assert.equal(c.label, c.label.toLowerCase(), "minuscules : " + c.label);
     assert.ok(Graines.CATEGORIES[c.category], "catégorie : " + c.id);
-    assert.ok(c.extras.phrase, "phrase : " + c.id);
     assert.ok(!/\(/.test(c.label), "précision entre parenthèses affichée : " + c.label);
   }
   const lettres = cartes.filter((c) => c.type === "letter").map((c) => c.extras.letter);

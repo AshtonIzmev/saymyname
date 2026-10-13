@@ -85,9 +85,6 @@
     <label class="champ" data-pour="word letter"><span id="ajout-mot-libelle">Mot</span>
       <input type="text" id="ajout-mot" required autocapitalize="none" spellcheck="false" placeholder="chien">
     </label>
-    <label class="champ" data-pour="word"><span>La voix dit</span>
-      <input type="text" id="ajout-phrase" autocapitalize="none" placeholder="le chien">
-    </label>
     <label class="champ" data-pour="word"><span>Catégorie</span>
       <select id="ajout-categorie"></select>
     </label>
@@ -97,14 +94,6 @@
     <label class="champ" data-pour="letter" hidden><span>Lettre</span>
       <select id="ajout-lettre"></select>
     </label>
-    <label class="champ" data-pour="letter" hidden><span>Son de la lettre</span>
-      <input type="text" id="ajout-son" autocapitalize="none" placeholder="beu">
-    </label>
-
-    <div class="voix">
-      <button type="button" class="bouton enregistrer" id="ajout-enregistrer">Maintenir pour enregistrer</button>
-      <button type="button" class="bouton secondaire" id="ajout-ecouter" disabled>Écouter</button>
-    </div>
 
     <fieldset class="champ"><legend>Paquets</legend><div id="ajout-paquets" class="cases"></div></fieldset>
     <label class="champ"><span>Source</span><select id="ajout-source"></select></label>
@@ -124,7 +113,7 @@
       <select id="filtre-boite"></select>
       <select id="filtre-source"></select>
       <select id="filtre-etat">
-        <option value="">Toutes</option><option value="sans-voix">À enregistrer</option>
+        <option value="">Toutes</option>
         <option value="signalees">Signalées</option><option value="suspendues">Suspendues</option>
       </select>
       <input type="search" id="filtre-texte" placeholder="Chercher">
@@ -143,17 +132,14 @@
 
     <h2>Sauvegarde</h2>
     <p class="discret">Tout est enregistré sur cet appareil seulement. Exporter télécharge un
-      fichier avec les cartes, les photos, les voix et les progrès des enfants : à garder
+      fichier avec les cartes, les photos et les progrès des enfants : à garder
       en lieu sûr, ou à importer sur un autre appareil (l'import remplace tout ce qu'il contient).</p>
     <p id="sauvegarde-statut" class="discret"></p>
-    <div class="voix">
+    <div class="rangee">
       <button type="button" class="bouton" id="exporter">Exporter</button>
       <label class="bouton secondaire">Importer<input type="file" id="importer-sauvegarde" accept="application/json,.json" hidden></label>
     </div>
     <p id="sauvegarde-message" class="message" role="status"></p>
-
-    <h2>Voix</h2>
-    <label class="champ"><span>Enregistré par</span><input type="text" id="voix-nom" placeholder="papa"></label>
 
     <h2>Ajouter des images en masse</h2>
     <p class="discret">Un dossier d'images nommées par leur mot : <code>chien.jpg</code> → « chien ».
@@ -161,7 +147,7 @@
     <label class="champ"><span>Source</span><select id="import-source"></select></label>
     <label class="champ"><span>Catégorie</span><select id="import-categorie"></select></label>
     <fieldset class="champ"><legend>Paquets</legend><div id="import-paquets" class="cases"></div></fieldset>
-    <div class="voix">
+    <div class="rangee">
       <label class="bouton">Choisir un dossier<input type="file" id="import-dossier" webkitdirectory multiple hidden></label>
       <label class="bouton secondaire">ou des images<input type="file" id="import-fichiers" accept="image/*" multiple hidden></label>
     </div>

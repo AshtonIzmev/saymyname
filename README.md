@@ -7,7 +7,7 @@ pas de serveur d'application, pas de compte, rien ne sort de l'appareil.
 | --- | --- |
 | `index.html` | **Choisir un jeu** : deux grandes tuiles, Mot à Mot et Flashcards. |
 | `mot-a-mot/` | **Mot à Mot** : une image au centre, quatre voisines aux coins, sur liseuse e-ink. Voir [`mot-a-mot/README.md`](mot-a-mot/README.md). |
-| `flashcards/` | **Flashcards** : mots, lettres et chiffres en français, une boîte de Leitner par jumeau, la voix du parent. Données sur l'appareil, sauvegarde par export / import d'un fichier. Voir [`flashcards/README.md`](flashcards/README.md). |
+| `flashcards/` | **Flashcards** : mots, lettres et chiffres en français, une boîte de Leitner par jumeau. Aucun son. Données sur l'appareil, sauvegarde par export / import d'un fichier. Voir [`flashcards/README.md`](flashcards/README.md). |
 | `sw.js`, `manifest.webmanifest` | Installation sur l'écran d'accueil et démarrage hors ligne. |
 
 Chaque jeu a un bouton pour revenir à l'écran de choix (**Jeux** dans la barre de
@@ -22,7 +22,7 @@ npx http-server -p 8080      # ou : python3 -m http.server 8080
 ```
 
 `index.html` et Mot à Mot s'ouvrent aussi directement depuis un `file://`. Les
-flashcards également, mais sans micro, sans installation ni mode hors ligne.
+flashcards également, mais sans installation ni mode hors ligne.
 
 ## Héberger
 
@@ -34,7 +34,7 @@ docker build -t jeux .
 docker run -d -p 8080:8080 jeux
 ```
 
-**HTTPS est nécessaire** pour le micro (enregistrer la voix), l'installation sur
+**HTTPS est nécessaire** pour l'installation sur
 l'écran d'accueil et le mode hors ligne : Chrome les refuse en `http://` sauf sur
 `localhost`. Les hébergements cités le fournissent d'office ; devant le conteneur,
 un reverse proxy (Caddy) ou `tailscale serve` suffit.

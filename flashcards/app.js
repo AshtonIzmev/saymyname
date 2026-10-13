@@ -46,7 +46,6 @@
 
   function paquets() { return Object.values(S.etat.decks).sort((a, b) => (a.id < b.id ? -1 : 1)); }
   function carte(id) { return S.etat.cards[id]; }
-  function voixParDefaut() { try { return localStorage.getItem("flashcards.voix") || ""; } catch (_) { return ""; } }
 
   function afficherVue(id) {
     for (const v of document.querySelectorAll(".vue")) v.hidden = v.id !== id;
@@ -92,172 +91,6 @@
     let blob = await enBlob("image/webp");
     if (!blob || blob.type !== "image/webp") blob = await enBlob("image/jpeg");
     return blob;
-  }
-
-  // ======================================================================
-  // VOIX : enregistrements du parent, normalisés ; voix de synthèse sinon
-  // ======================================================================
-
-  const Voix = (function () {
-    let ctx = null;
-    let enCours = null;
-    const tampons = new Map();
-
-    function contexte() {
-      if (!ctx && (window.AudioContext || window.webkitAudioContext)) ctx = new (window.AudioContext || window.webkitAudioContext)();
-      return ctx;
-    }
-
-    // Appelé dans un geste de l'utilisateur, sans quoi Chrome refuse le son.
-    function deverrouiller() {
-      const c = contexte();
-      if (c && c.state === "suspended") c.resume().catch(() => {});
-    }
-
-    function arreter() {
-      if (enCours) { try { enCours(); } catch (_) {} enCours = null; }
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-    }
-
-    async function tampon(mediaId) {
-      if (tampons.has(mediaId)) return tampons.get(mediaId);
-      const blob = await S.lireMedia(mediaId);
-      if (!blob || !contexte()) return null;
-      const t = await contexte().decodeAudioData(await blob.arrayBuffer());
-      tampons.set(mediaId, t);
-      return t;
-    }
-
-    function jouerTampon(t, gain) {
-      return new Promise((ok) => {
-        const c = contexte();
-        const src = c.createBufferSource();
-        const g = c.createGain();
-        g.gain.value = gain || 1;
-        src.buffer = t;
-        src.connect(g).connect(c.destination);
-        let fini = false;
-        const terminer = () => { if (!fini) { fini = true; ok(); } };
-        src.onended = terminer;
-        enCours = () => { try { src.stop(); } catch (_) {} terminer(); };
-        src.start();
-      });
-    }
-
-    function dire(texte) {
-      return new Promise((ok) => {
-        if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) { ok(); return; }
-        const u = new SpeechSynthesisUtterance(texte);
-        u.lang = "fr-FR";
-        u.rate = 0.85;
-        const fr = window.speechSynthesis.getVoices().find((v) => /^fr/i.test(v.lang));
-        if (fr) u.voice = fr;
-        let fini = false;
-        const terminer = () => { if (!fini) { fini = true; clearTimeout(garde); ok(); } };
-        // Certaines voix n'émettent jamais « end » : on ne bloque pas la séance.
-        const garde = setTimeout(terminer, 1500 + texte.length * 150);
-        u.onend = terminer;
-        u.onerror = terminer;
-        enCours = terminer;
-        window.speechSynthesis.speak(u);
-      });
-    }
-
-    function texteDeSecours(c, question) {
-      let t;
-      if (c.type === "letter") t = c.extras.sound || c.extras.letter;
-      else if (c.type === "number") t = c.label;
-      else t = (c.extras && c.extras.phrase) || c.label;
-      return question ? "Où est " + t + " ?" : t;
-    }
-
-    // Joue la voix de la carte une fois. En mode choix, la voix de synthèse
-    // pose la question ; l'enregistrement du parent dit simplement le mot.
-    async function jouer(c, question) {
-      arreter();
-      if (c.audio && c.audio.media) {
-        try {
-          const t = await tampon(c.audio.media);
-          if (t) { await jouerTampon(t, c.audio.gain); return; }
-        } catch (_) { /* format illisible : voix de secours */ }
-      }
-      await dire(texteDeSecours(c, question));
-    }
-
-    // Normalisation : gain pour amener le niveau moyen (RMS) vers -20 dBFS,
-    // sans jamais dépasser le plafond de crête.
-    async function mesurerGain(blob) {
-      try {
-        const c = contexte();
-        if (!c) return 1;
-        const t = await c.decodeAudioData(await blob.arrayBuffer());
-        let somme = 0, n = 0, crete = 0;
-        for (let k = 0; k < t.numberOfChannels; k++) {
-          const d = t.getChannelData(k);
-          for (let i = 0; i < d.length; i++) { somme += d[i] * d[i]; crete = Math.max(crete, Math.abs(d[i])); }
-          n += d.length;
-        }
-        const rms = Math.sqrt(somme / Math.max(1, n));
-        if (rms < 1e-4) return 1;
-        return Math.max(0.25, Math.min(6, 0.1 / rms, 0.95 / Math.max(crete, 1e-4)));
-      } catch (_) { return 1; }
-    }
-
-    async function jouerBlob(blob, gain) {
-      arreter();
-      const c = contexte();
-      if (!c) return;
-      const t = await c.decodeAudioData(await blob.arrayBuffer());
-      await jouerTampon(t, gain);
-    }
-
-    function oublier(mediaId) { tampons.delete(mediaId); }
-
-    return { deverrouiller, jouer, arreter, mesurerGain, jouerBlob, oublier };
-  })();
-
-  // Bouton « maintenir pour enregistrer ». `surFin({blob, gain})`.
-  function brancherEnregistreur(bouton, surFin, surErreur) {
-    let enregistreur = null, flux = null, morceaux = [], relache = false;
-    const libelle = bouton.textContent;
-
-    async function commencer(e) {
-      e.preventDefault();
-      relache = false;
-      Voix.deverrouiller();
-      if (!navigator.mediaDevices || !window.MediaRecorder) {
-        surErreur("Micro indisponible (il faut https ou localhost).");
-        return;
-      }
-      try {
-        flux = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      } catch (_) { surErreur("Micro refusé."); return; }
-      const type = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
-      enregistreur = new MediaRecorder(flux, type ? { mimeType: type } : undefined);
-      morceaux = [];
-      enregistreur.ondataavailable = (ev) => { if (ev.data.size) morceaux.push(ev.data); };
-      enregistreur.onstop = async () => {
-        flux.getTracks().forEach((t) => t.stop());
-        bouton.classList.remove("actif");
-        bouton.textContent = libelle;
-        const blob = new Blob(morceaux, { type: (enregistreur.mimeType || "audio/webm").split(";")[0] });
-        if (blob.size < 800) { surErreur("Trop court : maintenir le bouton pendant qu'on parle."); return; }
-        surFin({ blob, gain: await Voix.mesurerGain(blob) });
-      };
-      enregistreur.start();
-      bouton.classList.add("actif");
-      bouton.textContent = "J'écoute… relâcher pour finir";
-      if (relache) arreter();
-    }
-    function arreter() {
-      relache = true;
-      if (enregistreur && enregistreur.state === "recording") enregistreur.stop();
-    }
-    bouton.addEventListener("pointerdown", commencer);
-    bouton.addEventListener("pointerup", arreter);
-    bouton.addEventListener("pointercancel", arreter);
-    bouton.addEventListener("pointerleave", arreter);
-    bouton.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
   // ======================================================================
@@ -314,7 +147,6 @@
   let reveil = null;
 
   async function demarrer(mode) {
-    Voix.deverrouiller();
     const d = S.etat.decks[paquetChoisi];
     const maintenant = Date.now();
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, maintenant);
@@ -369,7 +201,6 @@
     const scene = $("scene");
     const entree = S.entree(seance.deck, c.id);
     scene.textContent = "";
-    Voix.arreter();
     seance.essai = { touchers: 0, trouve: false, auto: null, bloque: false, distracteur: null, cote: 0 };
 
     let distracteur = null;
@@ -391,7 +222,6 @@
       scene.append(h("div", { class: "option", "data-option": i, "data-carte": x.id },
         visuel(x, S.entree(seance.deck, x.id), true), h("div", { class: "etiquette" })));
     });
-    Voix.jouer(c, true);
   }
 
   function toucherOption(i) {
@@ -405,14 +235,13 @@
       e.auto = P.noteChoix(e.touchers, true);
       options[1 - i].classList.add("estompee");
       options[i].querySelector(".etiquette").replaceWith(etiquette(c));
-      Voix.jouer(c, false);
       return;
     }
     if (e.touchers >= 2) e.auto = "didnt_know";
-    // Erreur : rien pendant une seconde, puis la question revient.
+    // Erreur : rien pendant une seconde, puis on peut réessayer.
     e.bloque = true;
     setTimeout(() => {
-      if (seance && seance.essai === e) { e.bloque = false; Voix.jouer(c, true); }
+      if (seance && seance.essai === e) e.bloque = false;
     }, CONFIG.attenteErreur);
   }
 
@@ -446,7 +275,6 @@
   }
 
   function finir(par) {
-    Voix.arreter();
     if (seance) {
       seance.enregistrement.ended_at = Date.now();
       seance.enregistrement.ended_by = par;
@@ -467,8 +295,7 @@
   // ---------- Gestes du parent sur l'écran de l'enfant ----------
   //   glisser → : su        glisser ↑ : hésitant      glisser ← : pas su
   //   glisser ↓ : suivant (mode choix, note automatique)
-  //   appui long : fin       tap à deux doigts : réécouter, sans note
-  //   tap sur l'image : écouter (montrer) / désigner (choisir)
+  //   appui long : fin       tap sur l'image : désigner (mode choisir)
   function brancherGestes(zone) {
     const doigts = new Map();
     let depart = null, long = null, multi = false, longFait = false, bouge = false;
@@ -502,7 +329,7 @@
       const dx = ev.clientX - depart.x, dy = ev.clientY - depart.y;
       const cible = depart.cible;
       depart = null;
-      if (multi) { if (!bouge) Voix.jouer(carteCourante(), false); return; }
+      if (multi) return;
       if (Math.hypot(dx, dy) >= CONFIG.seuilGlisser) {
         if (Math.abs(dx) > Math.abs(dy)) noterEtAvancer(dx > 0 ? "knew" : "didnt_know");
         else if (dy < 0) noterEtAvancer("hesitant");
@@ -511,8 +338,7 @@
       }
       if (bouge) return;
       const option = cible.closest && cible.closest(".option");
-      if (option) { toucherOption(Number(option.dataset.option)); return; }
-      if (cible.closest && cible.closest(".visuel")) Voix.jouer(carteCourante(), false);
+      if (option) toucherOption(Number(option.dataset.option));
     };
     zone.addEventListener("pointerup", (ev) => lever(ev, false));
     zone.addEventListener("pointercancel", (ev) => lever(ev, true));
@@ -527,7 +353,7 @@
   // PARENT : AJOUTER UNE CARTE
   // ======================================================================
 
-  const ajout = { type: "word", blob: null, emoji: "", audio: null };
+  const ajout = { type: "word", blob: null, emoji: "" };
 
   function cochesPaquets(zone, prefixe, coches) {
     zone.textContent = "";
@@ -554,9 +380,8 @@
   }
 
   function reinitialiserAjout() {
-    ajout.blob = null; ajout.emoji = ""; ajout.audio = null;
+    ajout.blob = null; ajout.emoji = "";
     $("onglet-ajouter").reset();
-    $("ajout-ecouter").disabled = true;
     $("ajout-source").value = "photo";
     cochesPaquets($("ajout-paquets"), "ajout");
     choisirTypeAjout(ajout.type);
@@ -582,18 +407,14 @@
     const images = [];
     if (ajout.blob) images.push({ id: S.nouvelId(), media: await S.ajouterMedia(ajout.blob), emoji: null, is_primary: true, order: 0 });
     else images.push({ id: S.nouvelId(), media: null, emoji: ajout.emoji, is_primary: true, order: 0 });
-    let audio = null;
-    if (ajout.audio)
-      audio = { id: S.nouvelId(), media: await S.ajouterMedia(ajout.audio.blob), gain: ajout.audio.gain, recorded_by: $("voix-nom").value || voixParDefaut() || null };
 
     const nouvelle = {
       id, type, category: null, extras: {}, source: $("ajout-source").value, note: $("ajout-note").value.trim(),
-      created_at: Date.now(), suspended: false, suspended_until: null, images, audio,
+      created_at: Date.now(), suspended: false, suspended_until: null, images,
     };
     if (type === "word") {
       nouvelle.label = mot;
       nouvelle.category = $("ajout-categorie").value;
-      nouvelle.extras.phrase = $("ajout-phrase").value.trim() || mot;
     } else if (type === "number") {
       const n = Number($("ajout-chiffre").value);
       nouvelle.label = CHIFFRES[n];
@@ -601,18 +422,15 @@
     } else {
       nouvelle.label = mot;
       nouvelle.extras.letter = $("ajout-lettre").value;
-      nouvelle.extras.sound = $("ajout-son").value.trim() || $("ajout-lettre").value.toLowerCase();
     }
     S.enregistrerCarte(nouvelle, decks);
-    message(msg, "« " + nouvelle.label + " » ajoutée : elle sera dans la prochaine séance." + (audio ? "" : " Pensez à enregistrer la voix."));
+    message(msg, "« " + nouvelle.label + " » ajoutée : elle sera dans la prochaine séance.");
     reinitialiserAjout();
   }
 
   // ======================================================================
   // PARENT : LES CARTES
   // ======================================================================
-
-  function aVoix(c) { return !!(c.audio && c.audio.media); }
 
   function drapeaux(c) {
     const maintenant = Date.now();
@@ -622,7 +440,6 @@
       if (!e) continue;
       d.push(h("span", { class: "drapeau" + (P.estSangsue(e) ? " alerte" : "") }, p.name + " · b" + e.box));
     }
-    if (!aVoix(c)) d.push(h("span", { class: "drapeau alerte" }, "à enregistrer"));
     if (P.estSuspendue(c, maintenant)) d.push(h("span", { class: "drapeau" }, "suspendue"));
     return h("div", { class: "drapeaux" }, d);
   }
@@ -640,7 +457,6 @@
         const e = S.entree(deck, c.id);
         if (!e || String(e.box) !== b) return false;
       }
-      if (etatF === "sans-voix" && aVoix(c)) return false;
       if (etatF === "suspendues" && !P.estSuspendue(c, maintenant)) return false;
       if (etatF === "signalees" && !paquets().some((p) => { const e = S.entree(p.id, c.id); return e && P.estSangsue(e); })) return false;
       return true;
@@ -671,7 +487,6 @@
   function ouvrirFiche(id) {
     const c = JSON.parse(JSON.stringify(carte(id)));
     const fiche = $("fiche");
-    let nouvelleVoix = null;
     fiche.textContent = "";
 
     const images = h("div", { class: "fiche-images" });
@@ -695,8 +510,6 @@
     rendreImages();
 
     const label = h("input", { type: "text", value: c.label, autocapitalize: "none" });
-    const phrase = h("input", { type: "text", value: c.extras.phrase || "", autocapitalize: "none" });
-    const son = h("input", { type: "text", value: c.extras.sound || "", autocapitalize: "none" });
     const cat = h("select");
     options(cat, Object.entries(Graines.CATEGORIES), c.category);
     const note = h("input", { type: "text", value: c.note || "" });
@@ -706,16 +519,6 @@
     // Retirer un enfant d'une carte effacerait son historique : on ne
     // propose que l'ajout ; pour écarter une carte, on la suspend.
     for (const i of cochesFiche.querySelectorAll("input")) if (membres.includes(i.value)) i.disabled = true;
-
-    const enregistrerVoix = h("button", { type: "button", class: "bouton enregistrer" }, aVoix(c) ? "Maintenir pour réenregistrer" : "Maintenir pour enregistrer");
-    const ecouter = h("button", { type: "button", class: "bouton secondaire", onclick: () => {
-      Voix.deverrouiller();
-      if (nouvelleVoix) Voix.jouerBlob(nouvelleVoix.blob, nouvelleVoix.gain);
-      else Voix.jouer(c, false);
-    } }, "Écouter");
-    const msg = h("p", { class: "message", role: "status" });
-    brancherEnregistreur(enregistrerVoix, (v) => { nouvelleVoix = v; message(msg, "Nouvelle voix prête : enregistrer la fiche pour la garder."); },
-      (t) => message(msg, t, true));
 
     const maintenant = Date.now();
     const suspendue = P.estSuspendue(c, maintenant);
@@ -733,14 +536,8 @@
     async function sauverFiche(changements) {
       Object.assign(c, changements || {});
       c.label = label.value.trim().toLowerCase() || c.label;
-      if (c.type === "word") { c.extras.phrase = phrase.value.trim() || c.label; c.category = cat.value; }
-      if (c.type === "letter") c.extras.sound = son.value.trim() || c.extras.sound;
+      if (c.type === "word") c.category = cat.value;
       c.note = note.value.trim();
-      if (nouvelleVoix) {
-        const media = await S.ajouterMedia(nouvelleVoix.blob);
-        if (c.audio) Voix.oublier(c.audio.media);
-        c.audio = { id: S.nouvelId(), media, gain: nouvelleVoix.gain, recorded_by: $("voix-nom").value || voixParDefaut() || null };
-      }
       S.enregistrerCarte(c, paquetsCoches(cochesFiche));
       fiche.close();
       rendreCartes();
@@ -751,17 +548,13 @@
       h("header", { class: "entete" }, h("button", { type: "button", class: "lien", onclick: () => fiche.close() }, "Fermer"),
         h("h1", null, c.type === "letter" ? c.extras.letter + " " + c.label : c.type === "number" ? c.extras.digit + " " + c.label : c.label), h("span")),
       sangsues.length ? h("p", { class: "alerte-sangsue" }, "Ratée 4 fois de suite (" + sangsues.map((p) => p.name).join(", ") +
-        ") : reprendre la photo, réenregistrer la voix, ou suspendre un mois.") : null,
+        ") : reprendre la photo, ou suspendre un mois.") : null,
       images,
       h("div", { class: "formulaire" },
         h("label", { class: "champ" }, h("span", null, c.type === "letter" ? "Mot compagnon" : "Mot"), label),
-        c.type === "word" ? h("label", { class: "champ" }, h("span", null, "La voix dit"), phrase) : null,
         c.type === "word" ? h("label", { class: "champ" }, h("span", null, "Catégorie"), cat) : null,
-        c.type === "letter" ? h("label", { class: "champ" }, h("span", null, "Son de la lettre"), son) : null,
-        h("div", { class: "voix" }, enregistrerVoix, ecouter),
         h("fieldset", { class: "champ" }, h("legend", null, "Paquets"), cochesFiche),
         h("label", { class: "champ" }, h("span", null, "Note"), note)),
-      msg,
       h("div", { class: "fiche-actions" },
         h("button", { type: "button", class: "bouton principal", onclick: () => sauverFiche() }, "Enregistrer"),
         suspendue
@@ -825,9 +618,6 @@
           : h("p", { class: "discret" }, "Aucune.")));
     }
     zone.append(colonnes);
-    const sansVoix = Object.values(S.etat.cards).filter((c) => !aVoix(c)).length;
-    zone.append(h("p", { class: "discret" }, sansVoix + " carte" + (sansVoix > 1 ? "s" : "") + " sans voix enregistrée (voix de synthèse en attendant). ",
-      h("button", { type: "button", class: "lien", onclick: () => { $("filtre-etat").value = "sans-voix"; ouvrirOnglet("cartes"); } }, "Les voir")));
     zone.append(h("p", { class: "discret" }, "Si les séances finissent toujours par le parent, le plafond est trop haut. Changer un réglage à la fois."));
   }
 
@@ -862,7 +652,6 @@
           h("label", { class: "champ" }, h("span", null, "Prénom"), nom),
           h("label", { class: "champ" }, h("span", null, "Cartes / jour"), cap))));
     }
-    $("voix-nom").value = voixParDefaut();
     cochesPaquets($("import-paquets"), "import");
     afficherDerniereSauvegarde();
   }
@@ -914,12 +703,12 @@
   async function importerSauvegarde(fichier) {
     const msg = $("sauvegarde-message");
     if (!fichier) return;
-    if (!confirm("Remplacer tout ce qui est sur cet appareil (cartes, photos, voix, progrès des enfants) par cette sauvegarde ?")) return;
+    if (!confirm("Remplacer tout ce qui est sur cet appareil (cartes, photos, progrès des enfants) par cette sauvegarde ?")) return;
     message(msg, "Import…");
     try {
       const r = await S.importer(fichier);
       const quand = r.exporte_le ? " du " + new Date(r.exporte_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
-      message(msg, "Sauvegarde" + quand + " importée : " + r.cartes + " cartes, " + r.revues + " révisions, " + r.medias + " photos et voix.");
+      message(msg, "Sauvegarde" + quand + " importée : " + r.cartes + " cartes, " + r.revues + " révisions, " + r.medias + " photos.");
       remplirFiltres();
       rendreDepart();
       rendreReglages();
@@ -949,8 +738,8 @@
       let c = Object.values(S.etat.cards).find((x) => x.type === "word" && P.motCle(x) === P.motCle({ label: mot }));
       const existante = !!c;
       c = existante ? JSON.parse(JSON.stringify(c)) : {
-        id: S.nouvelId(), type: "word", label: mot, category: categorie, extras: { phrase: mot }, source,
-        note: "", created_at: Date.now(), suspended: false, suspended_until: null, images: [], audio: null,
+        id: S.nouvelId(), type: "word", label: mot, category: categorie, extras: {}, source,
+        note: "", created_at: Date.now(), suspended: false, suspended_until: null, images: [],
       };
       for (const f of liste) {
         try {
@@ -1023,22 +812,11 @@
       if (ajout.emoji) { ajout.blob = null; $("ajout-source").value = "emoji"; }
       apercuAjout();
     });
-    $("ajout-mot").addEventListener("input", (ev) => {
-      if (ajout.type === "word" && !$("ajout-phrase").dataset.touche) $("ajout-phrase").placeholder = "le " + (ev.target.value.trim().toLowerCase() || "chien");
-    });
-    $("ajout-phrase").addEventListener("input", (ev) => { ev.target.dataset.touche = "1"; });
-    brancherEnregistreur($("ajout-enregistrer"), (v) => {
-      ajout.audio = v;
-      $("ajout-ecouter").disabled = false;
-      message($("ajout-message"), "Voix enregistrée.");
-    }, (t) => message($("ajout-message"), t, true));
-    $("ajout-ecouter").addEventListener("click", () => { if (ajout.audio) { Voix.deverrouiller(); Voix.jouerBlob(ajout.audio.blob, ajout.audio.gain); } });
     $("onglet-ajouter").addEventListener("submit", enregistrerAjout);
 
     for (const id of ["filtre-type", "filtre-boite", "filtre-source", "filtre-etat"]) $(id).addEventListener("change", rendreCartes);
     $("filtre-texte").addEventListener("input", rendreCartes);
 
-    $("voix-nom").addEventListener("change", (ev) => { try { localStorage.setItem("flashcards.voix", ev.target.value.trim()); } catch (_) {} });
     $("exporter").addEventListener("click", exporterSauvegarde);
     $("importer-sauvegarde").addEventListener("change", (ev) => { importerSauvegarde(ev.target.files[0]); ev.target.value = ""; });
     $("import-dossier").addEventListener("change", (ev) => importer(ev.target.files));
@@ -1049,7 +827,7 @@
       if (!seance || $("vue-enfant").hidden) return;
       const t = { ArrowRight: () => noterEtAvancer("knew"), ArrowUp: () => noterEtAvancer("hesitant"),
         ArrowLeft: () => noterEtAvancer("didnt_know"), ArrowDown: suivantAvecNoteAuto,
-        Escape: () => finir("parent"), " ": () => Voix.jouer(carteCourante(), false),
+        Escape: () => finir("parent"),
         1: () => toucherOption(0), 2: () => toucherOption(1) }[ev.key];
       if (t) { ev.preventDefault(); t(); }
     });

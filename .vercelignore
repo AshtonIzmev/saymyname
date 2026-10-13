@@ -1,0 +1,7 @@
+test/
+Dockerfile
+nginx.conf
+.dockerignore
+node_modules/
+README.md
+package.json
