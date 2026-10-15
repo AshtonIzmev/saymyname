@@ -35,6 +35,8 @@ Dans `mot-a-mot/index.html`, bloc `<script id="donnees">`, ajouter **une ligne**
 
 - **image** : un emoji (provisoire) ou un chemin vers une illustration
   (`img/renard.webp`). Le code rend un `<span>` ou une `<img>` selon le cas.
+  Après un nouvel emoji, relancer `polices/emoji/fabriquer.py` pour qu'il entre
+  dans la police embarquée (sinon il dépend de la police de la liseuse).
 - **identifiant** : unique, jamais affiché. Sert aux tests et aux journaux.
 - **famille** : `animal`, `fruit`, `legume`, `objet` ou `nature`.
 - **étiquettes** : 3 à 6, prises **exclusivement** dans `VOCABULAIRE` (juste

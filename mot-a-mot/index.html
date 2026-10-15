@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Mot à Mot</title>
+<!-- Police emoji embarquée, en fichiers locaux (aucune police réseau) : voir polices/emoji/fabriquer.py. -->
+<link rel="stylesheet" href="../polices/emoji.css">
 <style>
 /* ------------------------------------------------------------------------
    Contraintes e-ink (voir README) : aplats pleins, aucun trait sous 2 px,
@@ -122,7 +124,7 @@ body {
 .glyphe {
   display: block;
   line-height: 1;
-  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-family: "Jeux Emoji", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }
 .plaque .glyphe { font-size: calc(var(--cote) * 0.9); }
 .cercle .glyphe { font-size: calc(var(--diametre) * 0.66); }

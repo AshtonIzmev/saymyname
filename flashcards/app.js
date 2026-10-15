@@ -156,8 +156,12 @@
     // Rien à montrer : on le dit et on reste là. Pas de « fini » verrouillé
     // trente secondes pour un appui de trop sur une tuile.
     if (file.length === 0) { rendreInfoMode(); return; }
+    // En mode choisir, le distracteur de chaque carte est tiré dès maintenant,
+    // pour que ses images soient résolues avec les autres : sinon la seconde
+    // image arrivait en retard sur une tablette lente, ou pas du tout.
+    const distracteurs = file.map((c) => mode === "choice" ? P.choisirDistracteur(c, S.etat.cards, S.entrees(d.id)) : null);
     seance = {
-      id: S.nouvelId(), deck: d.id, mode, filtre: filtreChoisi, file, i: 0,
+      id: S.nouvelId(), deck: d.id, mode, filtre: filtreChoisi, file, distracteurs, i: 0,
       enregistrement: { id: null, deck_id: d.id, mode, filter: filtreChoisi, started_at: maintenant, ended_at: null, ended_by: null },
       essai: null,
     };
@@ -166,7 +170,7 @@
     // Les images sont résolues avant la première carte : l'écran de l'enfant
     // ne montre jamais une image en train de charger.
     const medias = new Set();
-    for (const c of file) for (const im of c.images || []) if (im.media) medias.add(im.media);
+    for (const c of file.concat(distracteurs)) for (const im of (c && c.images) || []) if (im.media) medias.add(im.media);
     await Promise.all([...medias].map((m) => S.urlMedia(m)));
     try { if (navigator.wakeLock) reveil = await navigator.wakeLock.request("screen"); } catch (_) {}
     afficherVue("vue-enfant");
@@ -207,8 +211,7 @@
     scene.textContent = "";
     seance.essai = { touchers: 0, trouve: false, auto: null, bloque: false, distracteur: null, cote: 0 };
 
-    let distracteur = null;
-    if (seance.mode === "choice") distracteur = P.choisirDistracteur(c, S.etat.cards, S.entrees(seance.deck));
+    const distracteur = seance.distracteurs[seance.i] || null;
     if (!distracteur) {
       // Mode montrer (ou pas de distracteur possible pour cette carte).
       scene.className = "scene montrer";

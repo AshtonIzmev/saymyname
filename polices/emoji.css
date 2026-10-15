@@ -1,0 +1,64 @@
+/* Police emoji embarquée : Noto Color Emoji (COLRv1), réduite aux emoji des deux
+   applications. Fichier fabriqué par polices/emoji/fabriquer.py : ne pas éditer.
+   « tech(color-COLRv1) » : un navigateur trop ancien pour ce format ignore la
+   règle et garde sa police système, au lieu d'afficher des glyphes vides. */
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/1.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+1F308;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/2.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+26AA, U+26AB, U+2764, U+2B55, U+1F3B6, U+1F441, U+1F534, U+1F535, U+1F53A, U+1F7E0, U+1F7E1, U+1F7E2, U+1F7E3, U+1F7E6;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/3.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+2602, U+1F392, U+1F3A9, U+1F455, U+1F456, U+1F457, U+1F45F, U+1F4A1, U+1F4D6, U+1F511, U+1F6C1, U+1F6CF, U+1F9E2, U+1F9E3, U+1F9E4, U+1F9E5, U+1F9E6, U+1F9F8, U+1F9FC, U+1FA91, U+1FAA3, U+1FAA5;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/4.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+26BD, U+1F382, U+1F383, U+1F388, U+1F3A9, U+1F3B3, U+1F3B8, U+1F941, U+1FA80, U+1FA81;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/5.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+26F5, U+2708, U+1F3CD, U+1F3E0, U+1F3ED, U+1F681, U+1F682, U+1F68C, U+1F692, U+1F697, U+1F69C, U+1F6A4, U+1F6B2;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/6.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+2615, U+1F33D, U+1F345, U+1F346, U+1F347, U+1F349, U+1F34A, U+1F34B, U+1F34C, U+1F34D, U+1F34E, U+1F350, U+1F351, U+1F352, U+1F353, U+1F35E, U+1F366, U+1F36A, U+1F374, U+1F37C, U+1F37D, U+1F382, U+1F52A, U+1F944, U+1F952, U+1F954, U+1F955, U+1F95A, U+1F95B, U+1F95D, U+1F963, U+1F966, U+1F96C, U+1F9C0, U+1F9C3, U+1F9C5, U+1FAD1;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/7.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+2600, U+2601, U+2744, U+2B50, U+1F308, U+1F30A, U+1F319, U+1F327, U+1F333, U+1F338, U+1F343, U+1F344, U+1F3DD, U+1F404, U+1F408, U+1F40C, U+1F411, U+1F412, U+1F413, U+1F414, U+1F415, U+1F416, U+1F418, U+1F419, U+1F41D, U+1F41E, U+1F41F, U+1F422, U+1F425, U+1F426, U+1F427, U+1F428, U+1F42C, U+1F42D, U+1F42F, U+1F430, U+1F434, U+1F438, U+1F43B, U+1F43C, U+1F525, U+1F980, U+1F981, U+1F986, U+1F989, U+1F98A, U+1F98B, U+1F98C, U+1F992, U+1F993, U+1FAA8;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/8.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+2708, U+2764, U+1F37C, U+1F3ED, U+1F476, U+1F692;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/9.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+270B, U+2764, U+2B50, U+1F383, U+1F441, U+1F442, U+1F443, U+1F444, U+1F445, U+1F4AA, U+1F525, U+1F9B5, U+1F9B6, U+1F9B7;
+}
+@font-face {
+  font-family: "Jeux Emoji";
+  font-display: block;
+  src: url("emoji/10.woff2") format("woff2") tech(color-COLRv1);
+  unicode-range: U+1F344, U+1F34B, U+1F426, U+1F525;
+}
