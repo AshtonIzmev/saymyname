@@ -230,8 +230,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .drapeau { font-size: 12px; padding: 2px 6px; border-radius: 6px; background: var(--doux); white-space: nowrap; }
 .drapeau.alerte { background: #fde3e0; color: var(--danger); }
 
-/* Tableau de bord : les deux enfants côte à côte, jamais classés. */
-.cote-a-cote { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* Tableau de bord : un enfant à la fois, jamais côte à côte, jamais classés. */
 .carte-stats { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; background: var(--fond); }
 .carte-stats h3 { margin: 0 0 8px; font-size: 17px; }
 .boites { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; margin-bottom: 12px; }
@@ -362,9 +361,6 @@ dialog#fiche::backdrop { background: rgba(0, 0, 0, .45); }
   color: var(--encre);
 }
 
-@media (max-width: 520px) {
-  .cote-a-cote { grid-template-columns: 1fr; }
-}
 @media (orientation: portrait) {
   .choisir { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
   .choisir .visuel-mot .glyphe { font-size: min(30vh, 70vw); }

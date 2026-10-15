@@ -125,10 +125,12 @@ Tout se fait sur la tablette : elle a l'appareil photo.
   ajouter une), mot, paquets, suspendre (un mois ou
   indéfiniment, pour les deux enfants), **reposer un mois pour un seul enfant**
   (ou le réveiller), historique des révisions.
-- **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
-  dits en 7 jours (premier *su* en *Montrer* ; une réussite en *Choisir* n'en est pas
-  un), jamais montrées, séances, durée moyenne, fin par plafond ou par le parent,
-  cartes en échec 3 fois de suite.
+- **Tableau** : un enfant à la fois (on choisit lequel en haut), jamais côte à côte :
+  « jamais comparé » vaut aussi pour le parent, et un décalage entre jumeaux est
+  fréquent et normal. Cartes par boîte, boîtes 4–5, nouveaux mots dits en 7 jours
+  (premier *su* en *Montrer* ; une réussite en *Choisir* n'en est pas un), jamais
+  montrées, séances, durée moyenne, fin par plafond ou par le parent, cartes en
+  échec 3 fois de suite.
 - **Réglages** : prénom, photo et plafond de chaque enfant ; **en réserve** (voir
   *Jeu de départ*) ; **sauvegarde** (exporter, importer) ; images en masse.
 

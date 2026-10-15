@@ -259,6 +259,9 @@ test("séance « choisir » : seulement après « montrer » ; deux images sans 
   await toucher.deuxDoigts.glisser(0, 250); // ↓ : on garde la note automatique
   let r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible);
   assert.deepEqual([r.grade, r.touches, r.mode, r.distractor_card_id], ["knew", 1, "choice", distracteur.id]);
+  // La révision ne compte que pour la cible, jamais pour le distracteur
+  // (vérifié maintenant : il peut être la cible d'une carte suivante).
+  assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id), revuesDistracteur);
 
   // Deux erreurs : pas su, et le parent peut forcer « hésitant » par glissement.
   cote = await page.evaluate(() => flashcards.seance.essai.cote);
@@ -274,14 +277,13 @@ test("séance « choisir » : seulement après « montrer » ; deux images sans 
   await toucher.deuxDoigts.glisser(0, -250);
   r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible2);
   assert.deepEqual([r.grade, r.touches], ["hesitant", 2]);
-  // La révision ne compte que pour la cible, jamais pour le distracteur.
-  assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id), revuesDistracteur);
 
   // Le tableau de bord ne compte pas une réussite en choisir comme un mot dit.
   await page.keyboard.press("Escape");
   await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
   await page.click("#ouvrir-parent");
   await page.click("[data-onglet='tableau']");
+  await page.click("#tableau-enfant button[data-deck='deck-2']");
   const dits = await page.$eval(".carte-stats[data-deck='deck-2'] dl", (dl) => {
     const dts = [...dl.querySelectorAll("dt")];
     const i = dts.findIndex((d) => /mots dits/.test(d.textContent));
@@ -367,10 +369,15 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
   // La suspension d'un mois posée depuis la fiche n'est pas une mise en réserve.
   assert.equal(await page.evaluate(() => Stockage.etat.cards["letter-A"].suspended_until), null);
 
-  // Tableau de bord : les deux enfants côte à côte.
+  // Tableau de bord : un enfant à la fois, jamais côte à côte.
   await page.click("[data-onglet='tableau']");
-  assert.equal(await page.locator(".carte-stats").count(), 2);
+  assert.equal(await page.locator(".carte-stats").count(), 1);
   assert.match(await page.textContent(".carte-stats[data-deck='deck-1'] h3"), /Adam/);
+  assert.equal(await page.getAttribute("#tableau-enfant button[data-deck='deck-1']", "aria-checked"), "true");
+  await page.click("#tableau-enfant button[data-deck='deck-2']");
+  assert.equal(await page.locator(".carte-stats").count(), 1);
+  assert.equal(await page.locator(".carte-stats[data-deck='deck-2']").count(), 1);
+  assert.equal(await page.getAttribute("#tableau-enfant button[data-deck='deck-2']", "aria-checked"), "true");
   assert.deepEqual(erreurs, []);
 
   // Sur l'écran du mode : le filtre Lettres apparaît maintenant que les lettres

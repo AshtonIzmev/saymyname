@@ -682,14 +682,26 @@
     };
   }
 
+  // Un enfant à la fois : « jamais comparé » vaut aussi pour le parent. Deux
+  // colonnes côte à côte invitaient à mesurer l'écart tous les soirs ; un
+  // décalage entre jumeaux est fréquent et normal.
+  let enfantTableau = null;
+
   function rendreTableau() {
     const zone = $("onglet-tableau");
     zone.textContent = "";
-    const colonnes = h("div", { class: "cote-a-cote" });
-    for (const p of paquets()) {
+    const liste = paquets();
+    if (!liste.some((p) => p.id === enfantTableau)) enfantTableau = liste.length ? liste[0].id : null;
+    const choix = h("div", { class: "segments", id: "tableau-enfant", role: "radiogroup", "aria-label": "Enfant" });
+    for (const p of liste)
+      choix.append(h("button", { type: "button", role: "radio", "data-deck": p.id, "aria-checked": String(p.id === enfantTableau),
+        onclick: () => { enfantTableau = p.id; rendreTableau(); } }, p.name));
+    zone.append(choix);
+    for (const p of liste) {
+      if (p.id !== enfantTableau) continue;
       const s = statistiques(p.id);
       const minutes = s.duree ? Math.round(s.duree / 6000) / 10 + " min" : "—";
-      colonnes.append(h("div", { class: "carte-stats", "data-deck": p.id },
+      zone.append(h("div", { class: "carte-stats", "data-deck": p.id },
         h("h3", null, p.name),
         h("div", { class: "boites" }, s.boites.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, "boîte " + (i + 1))))),
         h("dl", { class: "chiffres" },
@@ -705,7 +717,6 @@
             carte(e.card_id).label + (P.estSangsue(e) ? " (signalée)" : "")))))
           : h("p", { class: "discret" }, "Aucune.")));
     }
-    zone.append(colonnes);
     zone.append(h("p", { class: "discret" }, "Si les séances finissent toujours par le parent, le plafond est trop haut. Changer un réglage à la fois."));
   }
 
