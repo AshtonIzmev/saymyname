@@ -319,5 +319,4 @@ test("jeu de départ : identifiants uniques, minuscules, 26 lettres, chiffres 1 
     assert.equal(c.images[0].is_primary, true);
     assert.ok(Object.keys(Graines.IMAGES_COULEURS).some((m) => m.replace(/\s*\(.*\)$/, "") === c.label), "couleur sans objets : " + c.label);
   }
-  assert.equal(Graines.paquetsDeDepart().length, 2);
 });

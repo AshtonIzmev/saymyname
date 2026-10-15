@@ -1,6 +1,6 @@
 # Jeux des jumeaux
 
-Un écran de choix du jeu et deux applications pour les garçons. Tout est statique :
+Un écran de choix du jeu et deux applications pour les tout-petits. Tout est statique :
 pas de serveur d'application, pas de compte, rien ne sort de l'appareil. Les fonds
 sont un papier (blanc cassé, grain léger) plutôt qu'un blanc pur, sauf en mode
 e-ink de Mot à Mot.
@@ -9,7 +9,7 @@ e-ink de Mot à Mot.
 | --- | --- |
 | `index.html` | **Choisir un jeu** : deux grandes tuiles, Mot à Mot et Flashcards. |
 | `mot-a-mot/` | **Mot à Mot** : une image au centre, quatre voisines aux coins, sur liseuse e-ink. Voir [`mot-a-mot/README.md`](mot-a-mot/README.md). |
-| `flashcards/` | **Flashcards** : mots, lettres et chiffres en français, une boîte de Leitner par jumeau. Aucun son. Le parent mène, un souffleur lui dit quand donner le mot et quand le demander ; lettres, couleurs, formes et chiffres 4–5 attendent en réserve. Données sur l'appareil, sauvegarde par export / import d'un fichier. Voir [`flashcards/README.md`](flashcards/README.md). |
+| `flashcards/` | **Flashcards** : mots, lettres et chiffres en français, une boîte de Leitner par enfant (autant d'enfants qu'on veut, un actif à la fois). Aucun son. Le parent mène, un souffleur lui dit quand donner le mot et quand le demander ; lettres, couleurs, formes et chiffres 4–5 attendent en réserve. Données sur l'appareil, sauvegarde par export / import d'un fichier. Voir [`flashcards/README.md`](flashcards/README.md). |
 | `polices/` | **Police emoji embarquée** : Noto Color Emoji réduite aux emoji des deux jeux (131 Ko). Sans elle, chaque appareil dessine les emoji avec sa police système, et une tablette de quelques années n'a pas les plus récents : la carte reste vide. Fabriquée par `polices/emoji/fabriquer.py`. |
 | `sw.js`, `manifest.webmanifest` | Installation sur l'écran d'accueil et démarrage hors ligne. |
 

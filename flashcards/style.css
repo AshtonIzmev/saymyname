@@ -92,35 +92,30 @@ code { background: var(--doux); padding: 0 4px; border-radius: 3px; }
 .segments button + button { border-left: 2px solid var(--encre); }
 .segments button[aria-checked="true"] { background: var(--encre); color: var(--fond); font-weight: 600; }
 
-/* Départ : deux grandes tuiles, une par enfant. */
-.jumeaux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
-.jumeau {
+/* Départ : l'enfant actif en tête, puis le choix du mode. */
+.enfant-actif {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 20px 8px;
-  font: inherit;
-  font-size: 22px;
-  font-weight: 600;
-  border: 2px solid var(--encre);
-  border-radius: 18px;
-  background: var(--fond);
-  color: var(--encre);
-  cursor: pointer;
+  gap: 16px;
+  margin: 8px 0 20px;
+  font-size: 24px;
+  font-weight: 700;
 }
-.jumeau .portrait {
-  width: min(36vw, 240px);
-  aspect-ratio: 1;
+.enfant-actif .portrait {
+  flex: none;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--doux);
-  font-size: min(18vw, 120px);
+  font-size: 36px;
 }
-.jumeau .portrait img { width: 100%; height: 100%; object-fit: cover; }
+.enfant-actif .portrait img { width: 100%; height: 100%; object-fit: cover; }
+.enfant-actif .prenom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.enfant-actif .bouton { font-size: 15px; flex: none; }
 
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .tuile-mode {
@@ -251,6 +246,11 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .paquet-reglage .portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: var(--doux); display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; }
 .paquet-reglage .portrait img { width: 100%; height: 100%; object-fit: cover; }
 .paquet-reglage .champs { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
+.paquet-reglage.actif { border: 2px solid var(--encre); }
+.paquet-reglage .actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+.paquet-reglage .actions .bouton { flex: 1; width: auto; min-height: 44px; }
+.paquet-reglage .actions .bouton.danger { flex: none; }
+#liste-enfants { margin-bottom: 20px; }
 
 dialog#fiche {
   width: min(680px, 100vw);

@@ -12,24 +12,14 @@
 </head>
 <body>
 
-<!-- ======================= Départ : choisir l'enfant ======================= -->
+<!-- ======================= Départ : l'enfant actif, le mode, c'est parti === -->
 <section id="vue-depart" class="vue parent">
   <header class="entete">
     <a class="lien" id="lien-jeux" href="../index.html">← Jeux</a>
     <h1>Flashcards</h1>
     <button type="button" class="lien" id="ouvrir-parent">Parent</button>
   </header>
-  <div id="jumeaux" class="jumeaux"></div>
-  <p id="statut-depart" class="discret centre"></p>
-</section>
-
-<!-- ======================= Choisir le mode, et c'est parti ================= -->
-<section id="vue-mode" class="vue parent" hidden>
-  <header class="entete">
-    <button type="button" class="lien" id="mode-retour">← Retour</button>
-    <h1 id="mode-titre"></h1>
-    <span></span>
-  </header>
+  <div id="enfant-actif" class="enfant-actif"></div>
   <div class="segments" id="filtre" role="radiogroup" aria-label="Cartes de la séance">
     <button type="button" role="radio" data-filtre="tout" aria-checked="true">Tout</button>
     <button type="button" role="radio" data-filtre="lettres" aria-checked="false">Lettres</button>
@@ -44,6 +34,28 @@
     </button>
   </div>
   <p id="mode-info" class="discret centre"></p>
+  <p id="statut-depart" class="discret centre"></p>
+</section>
+
+<!-- ======================= Les enfants : ajouter, choisir l'actif ========== -->
+<section id="vue-enfants" class="vue parent" hidden>
+  <header class="entete">
+    <span>
+      <button type="button" class="lien" id="enfants-retour">← Retour</button>
+      <a class="lien" id="enfants-jeux" href="../index.html" hidden>← Jeux</a>
+    </span>
+    <h1>Enfants</h1>
+    <button type="button" class="lien" id="enfants-parent" hidden>Parent</button>
+  </header>
+  <p id="enfants-intro" class="discret"></p>
+  <div id="liste-enfants"></div>
+  <form id="ajout-enfant" class="formulaire" autocomplete="off">
+    <label class="champ"><span>Ajouter un enfant</span>
+      <input type="text" id="nouvel-enfant" maxlength="40" placeholder="Prénom" autocapitalize="words" spellcheck="false">
+    </label>
+    <button type="submit" class="bouton principal" id="ajouter-enfant">Ajouter</button>
+  </form>
+  <p id="enfants-message" class="message" role="status"></p>
 </section>
 
 <!-- ======================= L'écran de l'enfant : une chose à la fois ======== -->
@@ -131,7 +143,9 @@
   <!-- Réglages -->
   <div id="onglet-reglages" class="onglet" hidden>
     <h2>Les enfants</h2>
-    <div id="reglages-paquets"></div>
+    <p class="discret">Prénom, photo et cartes par jour de chacun ; en ajouter un, choisir
+      celui qui joue.</p>
+    <button type="button" class="bouton" id="reglages-enfants">Gérer les enfants</button>
 
     <h2>Souffleur</h2>
     <label class="interrupteur"><input type="checkbox" id="souffleur-actif" checked><span>Une ligne pour le parent en bas de

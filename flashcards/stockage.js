@@ -68,13 +68,11 @@
     return ecriture;
   }
 
+  // Les cartes de départ seulement : aucun enfant d'office. Le premier
+  // lancement ouvre l'écran des enfants, et chaque enfant ajouté reçoit
+  // toutes les cartes (voir ajouterPaquet).
   function semer() {
-    for (const d of Graines.paquetsDeDepart()) etat.decks[d.id] = d;
-    for (const c of Graines.cartesDeDepart()) {
-      etat.cards[c.id] = c;
-      for (const d of Object.keys(etat.decks))
-        etat.deck_cards[cleEntree(d, c.id)] = Planificateur.nouvelleEntree(d, c.id, 0);
-    }
+    for (const c of Graines.cartesDeDepart()) etat.cards[c.id] = c;
   }
 
   // Les anciennes versions enregistraient la voix du parent sur chaque carte :
@@ -146,6 +144,34 @@
     paquet.updated_at = Date.now();
     etat.decks[paquet.id] = paquet;
     sauver();
+  }
+
+  // Un enfant de plus : un paquet à lui, avec toutes les cartes en boîte 1.
+  // Identifiants « deck-1 », « deck-2 »… dans l'ordre d'ajout, jamais réutilisés
+  // tant que le paquet existe.
+  function ajouterPaquet(nom) {
+    const maintenant = Date.now();
+    let n = 1;
+    while (etat.decks["deck-" + n]) n++;
+    const paquet = { id: "deck-" + n, name: nom, photo: null, daily_cap: Planificateur.PLAFOND_DEFAUT, created_at: maintenant, updated_at: maintenant };
+    etat.decks[paquet.id] = paquet;
+    for (const id of Object.keys(etat.cards))
+      etat.deck_cards[cleEntree(paquet.id, id)] = Planificateur.nouvelleEntree(paquet.id, id, maintenant);
+    sauver();
+    return paquet;
+  }
+
+  // Retirer un enfant efface ses progrès (boîtes, séances, révisions) et sa
+  // photo. Les cartes restent : elles servent aux autres.
+  async function retirerPaquet(deckId) {
+    const paquet = etat.decks[deckId];
+    if (!paquet) return;
+    for (const [k, e] of Object.entries(etat.deck_cards)) if (e.deck_id === deckId) delete etat.deck_cards[k];
+    for (const [k, s] of Object.entries(etat.sessions)) if (s.deck_id === deckId) delete etat.sessions[k];
+    for (const [k, r] of Object.entries(etat.reviews)) if (r.deck_id === deckId) delete etat.reviews[k];
+    delete etat.decks[deckId];
+    await sauver();
+    if (paquet.photo) await supprimerMedia(paquet.photo);
   }
 
   function enregistrerEntree(entree) {
@@ -285,7 +311,7 @@
     // survit à la fermeture.
     get persistant() { return !!db; },
     get derniereErreur() { return derniereErreur; },
-    enregistrerCarte, enregistrerPaquet, enregistrerEntree, enregistrerSession, ajouterRevue,
+    enregistrerCarte, enregistrerPaquet, ajouterPaquet, retirerPaquet, enregistrerEntree, enregistrerSession, ajouterRevue,
     entrees, entree, ajouterMedia, lireMedia, urlMedia, urlMediaConnue, mettreMedia,
     exporter, importer,
   };

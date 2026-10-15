@@ -1,6 +1,6 @@
 # Flashcards
 
-Des cartes-images pour les jumeaux : mots, lettres et chiffres en français. Le
+Des cartes-images pour les tout-petits : mots, lettres et chiffres en français. Le
 parent tient la tablette et mène une séance de 5 à 10 minutes ; l'application
 choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 
@@ -11,7 +11,8 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 - Rien ne récompense le tapotement : pas d'animation, pas de score visible des
   enfants. Et aucun son : l'application est muette, c'est le parent qui parle.
 - Une chose à la fois : une grande image, un mot, rien d'autre.
-- Un paquet par jumeau, jamais partagé, jamais comparé.
+- Un paquet par enfant, jamais partagé, jamais comparé. Un enfant seul, des
+  jumeaux, une fratrie : autant d'enfants qu'on veut, un seul actif à la fois.
 
 ## Commencer
 
@@ -34,15 +35,36 @@ Y aller doucement. La première semaine :
 
 ## Une séance
 
-1. **Départ** : toucher la tuile de l'enfant (photo et prénom dans *Parent → Réglages*).
-2. **Mode** : *Montrer* ou *Choisir*. Au-dessus, *Tout / Lettres / Chiffres* ; un
-   filtre n'apparaît que si l'enfant a des cartes actives de ce type (au départ,
-   seulement *Chiffres*, pour 1 à 3).
+1. **Départ** : l'enfant actif en tête (photo et prénom), *Changer d'enfant* pour
+   en prendre un autre (voir *Les enfants*).
+2. **Mode** : *Montrer* ou *Choisir*, juste dessous. Au-dessus, *Tout / Lettres /
+   Chiffres* ; un filtre n'apparaît que si l'enfant a des cartes actives de ce type
+   (au départ, seulement *Chiffres*, pour 1 à 3).
 3. C'est parti. La séance s'arrête au plafond du jour (6 cartes par défaut, 6 à 15)
    ou par un appui long du parent, à deux doigts. L'écran affiche « fini » et reste
    verrouillé 30 secondes. Il vaut mieux qu'ils en redemandent. S'il n'y a rien à
-   montrer (plafond atteint, tout vu, tout au repos), l'écran du mode le dit et
+   montrer (plafond atteint, tout vu, tout au repos), le départ le dit et
    on reste là : pas de « fini » verrouillé pour un appui de trop.
+
+## Les enfants
+
+L'écran *Enfants* (bouton *Changer d'enfant* / *Enfants* du départ, ou
+*Parent → Réglages → Gérer les enfants*) :
+
+- **Ajouter un enfant** : un prénom suffit. Il reçoit toutes les cartes de
+  l'appareil en boîte 1 (celles en réserve restent en réserve), un plafond de 6
+  cartes par jour, et commence comme un paquet neuf (trois mots).
+- **Choisir** l'enfant actif : c'est sa séance qui part du départ. Retenu sur
+  l'appareil, d'une ouverture à l'autre.
+- Pour chacun : **prénom**, **photo** (toucher le rond), **cartes par jour**.
+- **Retirer** un enfant, après confirmation : ses boîtes, séances, révisions et
+  sa photo sont effacées de l'appareil. Les cartes restent.
+
+Au tout premier lancement il n'y a aucun enfant : l'application ouvre cet écran
+(avec *Parent*, pour importer une sauvegarde d'abord si on change de tablette).
+Le premier enfant ajouté devient l'enfant actif. Une installation antérieure
+garde ses deux paquets (*Jumeau 1*, *Jumeau 2* ou les prénoms donnés) ; le
+premier est l'enfant actif.
 
 ### Montrer (expressif)
 
@@ -125,16 +147,17 @@ Tout se fait sur la tablette : elle a l'appareil photo.
   tête des nouvelles).
 - **Cartes** : filtres par type, boîte, source, signalées, suspendues. Toucher une carte ouvre sa fiche : images (choisir la principale, en
   ajouter une), mot, paquets, suspendre (un mois ou
-  indéfiniment, pour les deux enfants), **reposer un mois pour un seul enfant**
+  indéfiniment, pour tous les enfants), **reposer un mois pour un seul enfant**
   (ou le réveiller), historique des révisions.
 - **Tableau** : un enfant à la fois (on choisit lequel en haut), jamais côte à côte :
-  « jamais comparé » vaut aussi pour le parent, et un décalage entre jumeaux est
-  fréquent et normal. Cartes par boîte, boîtes 4–5, nouveaux mots dits en 7 jours
-  (premier *su* en *Montrer* ; une réussite en *Choisir* n'en est pas un), jamais
-  montrées, séances, durée moyenne, fin par plafond ou par le parent, cartes en
-  échec 3 fois de suite.
-- **Réglages** : prénom, photo et plafond de chaque enfant ; **en réserve** (voir
-  *Jeu de départ*) ; **sauvegarde** (exporter, importer) ; images en masse.
+  « jamais comparé » vaut aussi pour le parent, et un décalage entre enfants du même
+  âge est fréquent et normal. Cartes par boîte, boîtes 4–5, nouveaux mots dits en
+  7 jours (premier *su* en *Montrer* ; une réussite en *Choisir* n'en est pas un),
+  jamais montrées, séances, durée moyenne, fin par plafond ou par le parent, cartes
+  en échec 3 fois de suite.
+- **Réglages** : *Gérer les enfants* (l'écran *Enfants*) ; **souffleur** ; **en
+  réserve** (voir *Jeu de départ*) ; **sauvegarde** (exporter, importer) ; images en
+  masse.
 
 ### Import en masse
 
@@ -177,7 +200,7 @@ Une carte *su* trois fois de suite en boîte 4 passe en boîte 5. Une carte rat�
 fois de suite en boîte 1 est **signalée** et **se repose une semaine** : on ne
 drille pas un enfant de deux ans sur ce qu'il rate, on y revient plus tard. Elle
 n'est jamais retirée. Le repos vaut pour un enfant, pas pour la carte : depuis la
-fiche, le parent peut aussi la reposer un mois pour l'un des deux, ou la
+fiche, le parent peut aussi la reposer un mois pour un seul enfant, ou la
 réveiller. Au retour, un *su* efface la série ; un nouvel échec la repose une
 semaine de plus.
 
@@ -198,8 +221,8 @@ l'appareil.
 
 `graines.js` : ~110 mots en emoji (animaux, nourriture, corps, vêtements, objets,
 véhicules, nature, couleurs, formes), les 26 lettres avec un compagnon au premier
-son sans ambiguïté, les chiffres 1 à 5 avec trois objets différents chacun. Semés
-dans les deux paquets. Les emoji sont des remplaçants : les photos du parent et les
+son sans ambiguïté, les chiffres 1 à 5 avec trois objets différents chacun.
+Semés une fois sur l'appareil, puis donnés à chaque enfant ajouté. Les emoji sont des remplaçants : les photos du parent et les
 dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une image).
 `H` (muet en français) et `X` (pas d'emoji xylophone) portent une note. `W` a
 « wapiti », l'un des rares mots français en /w/ (« wagon » se dit /v/).
@@ -303,7 +326,7 @@ copie locale sert au bout de 3 secondes.
 
 Prévu en v3 par le cahier des charges : minuscules, chiffres 6–10, choix à trois
 images, syllabes. Les questions ouvertes restent ouvertes : même jeu de départ pour
-les deux (c'est le cas aujourd'hui).
+tous les enfants (c'est le cas aujourd'hui).
 
 Limites connues, laissées telles quelles pour l'instant :
 
