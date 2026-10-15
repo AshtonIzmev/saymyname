@@ -1,7 +1,7 @@
 {
   "name": "Jeux",
   "short_name": "Jeux",
-  "description": "Mot à Mot et les flashcards des jumeaux.",
+  "description": "Mot à Mot et les flashcards : mots, lettres et chiffres pour les tout-petits.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",

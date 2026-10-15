@@ -78,9 +78,50 @@ async function doigt(page) {
   };
 }
 
+// Le premier lancement ouvre l'écran des enfants : on en ajoute (deck-1,
+// deck-2…), puis on attend qu'IndexedDB ait tout écrit avant d'aller ailleurs.
+async function ouvrirAvecEnfants(chemin, taille, noms) {
+  const o = await ouvrir("/flashcards/index.html", taille);
+  await o.page.waitForSelector("#vue-enfants:not([hidden])");
+  for (const n of noms || ["Léa", "Sami"]) {
+    await o.page.fill("#nouvel-enfant", n);
+    await o.page.click("#ajouter-enfant");
+  }
+  await ecrituresFaites(o.page);
+  if (chemin !== "/flashcards/index.html") {
+    await o.page.goto(base + chemin);
+    await o.page.reload(); // « #parent » seul ne recharge pas la page
+    await o.page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  } else await o.page.click("#enfants-retour");
+  return o;
+}
+
+// Une lecture ouverte après les écritures passe après elles : quand elle
+// aboutit, tout est sur le disque.
+function ecrituresFaites(page) {
+  return page.evaluate(() => new Promise((ok) => {
+    const r = indexedDB.open("flashcards");
+    r.onsuccess = () => {
+      const t = r.result.transaction("etat");
+      t.objectStore("etat").get("etat");
+      t.oncomplete = () => { r.result.close(); ok(); };
+    };
+  }));
+}
+
+// Rendre l'enfant n° deckIndex actif (par l'écran des enfants), puis lancer.
+async function choisirEnfant(page, deckIndex) {
+  const deck = "deck-" + (deckIndex + 1);
+  await page.waitForSelector("#vue-depart:not([hidden])");
+  if (await page.evaluate(() => flashcards.enfantActif) === deck) return;
+  await page.click("#changer-enfant");
+  await page.click("[data-choisir='" + deck + "']");
+  await page.click("#enfants-retour");
+  await page.waitForSelector("#vue-depart:not([hidden])");
+}
+
 async function commencerSeance(page, deckIndex, mode) {
-  await page.locator(".jumeau").nth(deckIndex).click();
-  await page.waitForSelector("#vue-mode:not([hidden])");
+  await choisirEnfant(page, deckIndex);
   await page.click(mode === "choice" ? "#mode-choisir" : "#mode-montrer");
   await page.waitForSelector("#vue-enfant:not([hidden])");
 }
@@ -108,6 +149,13 @@ test("accueil : deux jeux, chacun mène à son application et en revient", async
   await page.waitForSelector("#jeu-flashcards");
   await page.click("#jeu-flashcards");
   await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  // Premier lancement : l'écran des enfants, avec sa sortie vers les jeux.
+  await page.click("#enfants-jeux");
+  await page.waitForSelector("#jeu-mot-a-mot");
+  await page.click("#jeu-flashcards");
+  await page.fill("#nouvel-enfant", "Léa");
+  await page.click("#ajouter-enfant");
+  await page.click("#enfants-retour");
   await page.click("#lien-jeux");
   await page.waitForSelector("#jeu-mot-a-mot");
   assert.deepEqual(erreurs, []);
@@ -124,9 +172,90 @@ test("accueil : deux jeux, chacun mène à son application et en revient", async
   await c2.close();
 });
 
-test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le parent note à deux doigts, appui long → « fini » verrouillé", async () => {
+test("enfants : premier lancement, ajouter, choisir l'actif, le retrouver au rechargement, en retirer un", async () => {
   const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html");
-  assert.equal(await page.locator(".jumeau").count(), 2);
+  // Aucun enfant d'office : l'écran des enfants, pas de départ derrière.
+  await page.waitForSelector("#vue-enfants:not([hidden])");
+  const cartes = await page.evaluate(() => Object.keys(Stockage.etat.cards).length);
+  assert.ok(cartes > 100, "les cartes de départ sont là : " + cartes);
+  assert.equal(await page.evaluate(() => Object.keys(Stockage.etat.decks).length), 0);
+  assert.equal(await page.isVisible("#enfants-retour"), false);
+  assert.equal(await page.isVisible("#enfants-jeux"), true);
+  assert.equal(await page.isVisible("#enfants-parent"), true, "une sauvegarde peut être importée avant tout");
+
+  await page.click("#ajouter-enfant");
+  assert.match(await page.textContent("#enfants-message"), /Il manque le prénom/);
+  await page.fill("#nouvel-enfant", "  Léa ");
+  await page.click("#ajouter-enfant");
+  // Le premier enfant est actif d'office, avec toutes les cartes en boîte 1.
+  assert.equal(await page.evaluate(() => flashcards.enfantActif), "deck-1");
+  assert.deepEqual(await page.evaluate(() => [Stockage.etat.decks["deck-1"].name, Stockage.entrees("deck-1").length,
+    Stockage.entrees("deck-1").every((e) => e.box === 1)]), ["Léa", cartes, true]);
+  assert.equal(await page.getAttribute("[data-choisir='deck-1']", "aria-pressed"), "true");
+  await page.click("#enfants-retour");
+  assert.match(await page.textContent("#enfant-actif"), /Léa/);
+  assert.equal((await page.textContent("#changer-enfant")).trim(), "Enfants");
+  assert.match(await page.textContent("#mode-info"), /3 cartes pour cette séance/);
+
+  // Un deuxième : ajouté, pas actif tant qu'on ne le choisit pas.
+  await page.click("#changer-enfant");
+  await page.fill("#nouvel-enfant", "Sami");
+  await page.click("#ajouter-enfant");
+  assert.equal(await page.evaluate(() => flashcards.enfantActif), "deck-1");
+  await page.click("[data-choisir='deck-2']");
+  assert.equal(await page.getAttribute("[data-choisir='deck-2']", "aria-pressed"), "true");
+  assert.equal(await page.getAttribute("[data-choisir='deck-1']", "aria-pressed"), "false");
+  await page.click("#enfants-retour");
+  assert.match(await page.textContent("#enfant-actif"), /Sami/);
+  assert.equal((await page.textContent("#changer-enfant")).trim(), "Changer d'enfant");
+
+  // L'enfant actif est retenu sur l'appareil.
+  await ecrituresFaites(page);
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.equal(await page.isVisible("#vue-depart"), true);
+  assert.match(await page.textContent("#enfant-actif"), /Sami/);
+
+  // Une séance pour Sami, puis on le retire : ses progrès partent avec lui,
+  // les cartes restent, et Léa redevient l'enfant actif.
+  await commencerSeance(page, 1, "show");
+  await page.keyboard.press("ArrowRight");
+  await page.evaluate(() => { flashcards.config.verrouFini = 10; });
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("#vue-depart:not([hidden])");
+  assert.equal(await page.evaluate(() => Object.values(Stockage.etat.reviews).filter((r) => r.deck_id === "deck-2").length), 1);
+  await page.click("#changer-enfant");
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("[data-retirer='deck-2']");
+  assert.equal(await page.evaluate(() => !!Stockage.etat.decks["deck-2"]), true, "refuser la confirmation ne retire rien");
+  page.once("dialog", (d) => d.accept());
+  await page.click("[data-retirer='deck-2']");
+  await page.waitForFunction(() => !Stockage.etat.decks["deck-2"]);
+  const reste = await page.evaluate(() => ({
+    entrees: Object.values(Stockage.etat.deck_cards).filter((e) => e.deck_id === "deck-2").length,
+    revues: Object.values(Stockage.etat.reviews).filter((r) => r.deck_id === "deck-2").length,
+    seances: Object.values(Stockage.etat.sessions).filter((x) => x.deck_id === "deck-2").length,
+    cartes: Object.keys(Stockage.etat.cards).length,
+    actif: flashcards.enfantActif,
+  }));
+  assert.deepEqual(reste, { entrees: 0, revues: 0, seances: 0, cartes, actif: "deck-1" });
+  assert.equal(await page.locator("#liste-enfants .paquet-reglage").count(), 1);
+
+  // Un enfant ajouté plus tard reçoit aussi les cartes ajoutées entre-temps.
+  await page.evaluate(() => Stockage.enregistrerCarte({ id: "carte-x", type: "word", label: "tonton", category: "famille", extras: {},
+    source: "emoji", note: "", suspended: false, suspended_until: null,
+    images: [{ id: "x0", emoji: "👨", media: null, is_primary: true, order: 0 }] }, ["deck-1"]));
+  await page.fill("#nouvel-enfant", "Noé");
+  await page.click("#ajouter-enfant");
+  const noe = await page.evaluate(() => Object.values(Stockage.etat.decks).find((d) => d.name === "Noé").id);
+  assert.equal(await page.evaluate((id) => !!Stockage.entree(id, "carte-x"), noe), true);
+  assert.deepEqual(erreurs, []);
+  await contexte.close();
+});
+
+test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le parent note à deux doigts, appui long → « fini » verrouillé", async () => {
+  const { page, contexte, erreurs } = await ouvrirAvecEnfants("/flashcards/index.html");
+  assert.match(await page.textContent("#enfant-actif"), /Léa/);
   await page.evaluate(() => { flashcards.config.verrouFini = 1500; });
   await commencerSeance(page, 0, "show");
 
@@ -162,7 +291,7 @@ test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le p
   const entrees = await page.evaluate((ids) => ids.map((id) => Stockage.entree("deck-1", id)), file);
   assert.deepEqual(entrees.slice(0, 2).map((e) => [e.box, e.reviews]), [[2, 1], [1, 1]]);
   assert.equal(entrees[2].reviews, 0);
-  // Le jumeau 2 n'est pas touché.
+  // Le deuxième enfant n'est pas touché.
   assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, file[0]), 0);
 
   // Appui long à deux doigts : fin de séance, par le parent.
@@ -194,7 +323,7 @@ test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le p
 });
 
 test("séance « choisir » : deux images sans étiquette, note automatique, fondu de l'autre image", async () => {
-  const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html");
+  const { page, contexte, erreurs } = await ouvrirAvecEnfants("/flashcards/index.html");
   await commencerSeance(page, 1, "choice");
   assert.equal(await page.locator("#scene .option").count(), 2);
   assert.equal(await page.evaluate(() => [...document.querySelectorAll("#scene .etiquette")].map((e) => e.textContent).join("")), "");
@@ -237,7 +366,7 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
 });
 
 test("parent : ajouter une carte, elle apparaît dans la séance suivante", async () => {
-  const appareil = await ouvrir("/flashcards/index.html#parent", { width: 390, height: 844 });
+  const appareil = await ouvrirAvecEnfants("/flashcards/index.html#parent", { width: 390, height: 844 });
   const tel = appareil.page;
   await tel.waitForSelector("#vue-parent:not([hidden])");
   await tel.fill("#ajout-emoji", "🦔");
@@ -260,7 +389,7 @@ test("parent : ajouter une carte, elle apparaît dans la séance suivante", asyn
   assert.equal(await tel.isVisible("#fiche"), true);
   await tel.click("#fiche >> text=Fermer");
 
-  // Elle est dans la séance suivante du jumeau 1.
+  // Elle est dans la séance suivante du premier enfant.
   await tel.click("#parent-fermer");
   await commencerSeance(tel, 0, "show");
   const ids = await tel.evaluate(() => flashcards.seance.file.map((c) => c.id));
@@ -270,9 +399,10 @@ test("parent : ajouter une carte, elle apparaît dans la séance suivante", asyn
 });
 
 test("parent : import en masse, réglages, tableau de bord", async () => {
-  const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html#parent");
+  const { page, contexte, erreurs } = await ouvrirAvecEnfants("/flashcards/index.html#parent");
   await page.click("[data-onglet='reglages']");
-  // Prénom et plafond.
+  // Prénom et plafond : dans l'écran des enfants.
+  await page.click("#reglages-enfants");
   const nom = page.locator(".paquet-reglage[data-deck='deck-1'] input[type='text']");
   await nom.fill("Adam");
   await nom.dispatchEvent("change");
@@ -281,6 +411,9 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
   await cap.dispatchEvent("change");
   assert.equal(await cap.inputValue(), "15", "plafond borné à 6–15");
   assert.equal(await page.evaluate(() => Stockage.etat.decks["deck-1"].name), "Adam");
+  // Retour au côté parent, là où on était.
+  await page.click("#enfants-retour");
+  assert.equal(await page.isVisible("#onglet-reglages"), true);
 
   // Import : tonton.png et tonton-2.png → une carte, deux images.
   await page.setInputFiles("#import-fichiers", [
@@ -309,8 +442,8 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
 });
 
 test("plafond quotidien : une deuxième séance le même jour ne propose que le reste, et rien ne verrouille l'écran", async () => {
-  const { page, contexte } = await ouvrir("/flashcards/index.html");
-  // Des révisions « aujourd'hui » pour le jumeau 2 jusqu'au plafond.
+  const { page, contexte } = await ouvrirAvecEnfants("/flashcards/index.html");
+  // Des révisions « aujourd'hui » pour le deuxième enfant jusqu'au plafond.
   await page.evaluate(() => {
     const d = Stockage.etat.decks["deck-2"];
     Stockage.enregistrerPaquet(Object.assign({}, d, { daily_cap: 6 }));
@@ -318,19 +451,19 @@ test("plafond quotidien : une deuxième séance le même jour ne propose que le 
     for (let i = 0; i < deja; i++)
       Stockage.ajouterRevue({ id: "test-" + i, session_id: "x", deck_id: "deck-2", card_id: "word-chat", grade: "knew", mode: "show", at: Date.now() });
   });
-  await page.locator(".jumeau").nth(1).click();
+  await choisirEnfant(page, 1);
   assert.match(await page.textContent("#mode-info"), /Plafond du jour atteint/);
   await page.click("#mode-montrer");
   // Un appui de trop sur une tuile n'enferme pas le parent trente secondes
   // devant « fini » : on reste sur le choix du mode.
-  assert.equal(await page.isVisible("#vue-mode"), true);
+  assert.equal(await page.isVisible("#vue-depart"), true);
   assert.equal(await page.isVisible("#vue-fini"), false);
   assert.equal(await page.evaluate(() => Object.keys(Stockage.etat.sessions).length), 0, "aucune séance vide enregistrée");
   await contexte.close();
 });
 
 test("fiche : reposer une carte pour un seul enfant, et l'écran de l'enfant prévient quand rien ne s'enregistre", async () => {
-  const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html#parent");
+  const { page, contexte, erreurs } = await ouvrirAvecEnfants("/flashcards/index.html#parent");
   await page.click("[data-onglet='cartes']");
   await page.fill("#filtre-texte", "chien");
   await page.click("#liste-cartes li");
@@ -342,7 +475,7 @@ test("fiche : reposer une carte pour un seul enfant, et l'écran de l'enfant pr�
   }));
   assert.deepEqual([repos.j1, repos.j2], [true, false], "le repos ne vaut que pour un enfant");
   assert.match(repos.drapeau, /repos/);
-  // Le jumeau 1 ne la voit plus en séance ; le jumeau 2 si.
+  // Le premier enfant ne la voit plus en séance ; le deuxième si.
   const vue = await page.evaluate(() => [1, 2].map((n) =>
     Planificateur.choisirSession(Stockage.etat.cards, Stockage.entrees("deck-" + n), { cap: 200, maxNouvelles: 200 }).some((c) => c.id === "word-chien")));
   assert.deepEqual(vue, [false, true]);
@@ -369,7 +502,7 @@ test("fiche : reposer une carte pour un seul enfant, et l'écran de l'enfant pr�
 
 test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tout y est", async () => {
   // Appareil A : des progrès, une photo, un prénom.
-  const a = await ouvrir("/flashcards/index.html#parent");
+  const a = await ouvrirAvecEnfants("/flashcards/index.html#parent");
   await a.page.evaluate(async () => {
     const photo = await Stockage.ajouterMedia(new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/webp" }));
     Stockage.enregistrerCarte({ id: "carte-a", type: "word", label: "papi", category: "famille", extras: {},
@@ -440,7 +573,7 @@ test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tou
 });
 
 test("rappel de sauvegarde au départ, seulement quand il y a des progrès à perdre", async () => {
-  const { page, contexte } = await ouvrir("/flashcards/index.html");
+  const { page, contexte } = await ouvrirAvecEnfants("/flashcards/index.html");
   assert.equal((await page.textContent("#statut-depart")).trim(), "", "rien à perdre, pas de rappel");
   await page.evaluate(() => {
     Stockage.ajouterRevue({ id: "r", session_id: "s", deck_id: "deck-1", card_id: "word-chien", grade: "knew", mode: "show", at: Date.now() });
