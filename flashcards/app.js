@@ -805,9 +805,14 @@
     const t = derniereSauvegarde();
     const progres = Object.keys(S.etat.reviews).length > 0;
     const jours = t ? Math.floor((Date.now() - t) / P.JOUR) : Infinity;
-    statut.textContent = progres && jours >= CONFIG.rappelSauvegarde
-      ? (t ? "Dernière sauvegarde il y a " + jours + " jours" : "Aucune sauvegarde") + " : Parent → Réglages → Exporter."
-      : "";
+    if (progres && jours >= CONFIG.rappelSauvegarde) {
+      statut.textContent = (t ? "Dernière sauvegarde il y a " + jours + " jours" : "Aucune sauvegarde") + " : Parent → Réglages → Exporter.";
+      return;
+    }
+    // Tant qu'aucune carte n'a de photo : à deux ans, un référent réel et
+    // personnel vaut dix dessins. Les emoji attendent, les photos d'abord.
+    const photos = Object.values(S.etat.cards).some((c) => (c.images || []).some((im) => im.media));
+    statut.textContent = photos ? "" : "Pour commencer : une vingtaine de photos de la maison, Parent → Ajouter.";
   }
 
   async function exporterSauvegarde() {

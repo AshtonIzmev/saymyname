@@ -34,6 +34,7 @@ const { charger } = require(process.argv[1] + "/test/charger.js");
 const cps = new Set();
 const add = (e) => { for (const ch of e) cps.add(ch.codePointAt(0)); };
 for (const [e] of G.MOTS) add(e);
+for (const l of Object.values(G.IMAGES_COULEURS)) for (const e of l) add(e);
 for (const [, , e] of G.LETTRES) add(e);
 for (const [, , objs] of G.NOMBRES) for (const e of objs) add(e);
 for (const n of charger().NOTIONS) add(n[0]);

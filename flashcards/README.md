@@ -13,6 +13,23 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 - Une chose à la fois : une grande image, un mot, rien d'autre.
 - Un paquet par jumeau, jamais partagé, jamais comparé.
 
+## Commencer
+
+Y aller doucement. La première semaine :
+
+1. **Vingt photos de la maison**, avant tout : le doudou, la tasse de l'enfant, le
+   chien de la voisine, la voiture de papa, la porte, la cuillère. *Parent →
+   Ajouter*, moins de trente secondes par carte. À deux ans, un référent réel et
+   personnel vaut dix dessins ; les emoji semés attendent, en réserve de fait, les
+   mots qu'on ne peut pas photographier. Le départ le rappelle d'une ligne tant
+   qu'aucune carte n'a de photo.
+2. **Montrer seulement.** *Choisir* s'ouvre de lui-même quand des mots auront été
+   donnés (voir plus bas).
+3. **Une séance par jour**, courte. Monter le plafond quand les enfants en
+   redemandent, ce que le tableau (*fin : plafond / parent*) permet de voir.
+4. **Les lettres, couleurs, formes et chiffres 4–5 restent en réserve** (voir *Jeu
+   de départ*) : rien à faire, c'est le réglage de départ.
+
 ## Une séance
 
 1. **Départ** : toucher la tuile de l'enfant (photo et prénom dans *Parent → Réglages*).

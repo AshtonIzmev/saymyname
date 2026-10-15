@@ -550,9 +550,18 @@ test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tou
   await Promise.all([a.contexte.close(), b.contexte.close(), c.contexte.close()]);
 });
 
-test("rappel de sauvegarde au départ, seulement quand il y a des progrès à perdre", async () => {
+test("au départ : les photos d'abord, puis le rappel de sauvegarde seulement quand il y a des progrès à perdre", async () => {
   const { page, contexte } = await ouvrir("/flashcards/index.html");
-  assert.equal((await page.textContent("#statut-depart")).trim(), "", "rien à perdre, pas de rappel");
+  // Paquet neuf, que des emoji : on commence par des photos de la maison.
+  assert.match(await page.textContent("#statut-depart"), /photos de la maison/);
+  await page.evaluate(async () => {
+    const photo = await Stockage.ajouterMedia(new Blob([new Uint8Array([1, 2, 3])], { type: "image/webp" }));
+    Stockage.enregistrerCarte({ id: "doudou", type: "word", label: "doudou", category: "objet", extras: {}, source: "photo", note: "",
+      created_at: Date.now(), suspended: false, suspended_until: null, images: [{ id: "i", media: photo, emoji: null, is_primary: true, order: 0 }] }, ["deck-1"]);
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.equal((await page.textContent("#statut-depart")).trim(), "", "une photo, rien à perdre : pas de rappel");
   await page.evaluate(() => {
     Stockage.ajouterRevue({ id: "r", session_id: "s", deck_id: "deck-1", card_id: "word-chien", grade: "knew", mode: "show", at: Date.now() });
   });
@@ -571,6 +580,7 @@ test("police emoji embarquée : chargée en COLRv1, et elle couvre chaque emoji 
   const { charger } = require("./charger");
   const emojis = new Set();
   for (const [e] of Graines.MOTS) emojis.add(e);
+  for (const l of Object.values(Graines.IMAGES_COULEURS)) for (const e of l) emojis.add(e);
   for (const [, , e] of Graines.LETTRES) emojis.add(e);
   for (const [, , objets] of Graines.NOMBRES) for (const e of objets) emojis.add(e);
   for (const n of charger().NOTIONS) emojis.add(n[0]);

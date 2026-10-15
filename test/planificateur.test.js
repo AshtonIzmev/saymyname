@@ -313,5 +313,11 @@ test("jeu de départ : identifiants uniques, minuscules, 26 lettres, chiffres 1 
   }
   assert.deepEqual(cartes.filter((c) => c.type === "number").map((c) => c.extras.digit), [1, 2, 3, 4, 5]);
   for (const c of cartes.filter((x) => x.type === "number")) assert.ok(c.images.length >= 3, "objets variés : " + c.id);
+  // Les couleurs : le rond d'abord, puis des objets de la même couleur.
+  for (const c of mots.filter((x) => x.category === "couleur")) {
+    assert.ok(c.images.length >= 2, "objets de la couleur : " + c.id);
+    assert.equal(c.images[0].is_primary, true);
+    assert.ok(Object.keys(Graines.IMAGES_COULEURS).some((m) => m.replace(/\s*\(.*\)$/, "") === c.label), "couleur sans objets : " + c.label);
+  }
   assert.equal(Graines.paquetsDeDepart().length, 2);
 });

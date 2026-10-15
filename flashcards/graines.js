@@ -165,6 +165,23 @@
     ["❤️", "cœur", "forme"],
   ];
 
+  // Les couleurs : le rond de couleur reste l'image principale (« rouge »,
+  // c'est cette couleur), puis, à partir de la boîte 3, des objets de la même
+  // couleur à tour de rôle, pour que le mot s'attache à la couleur et non au
+  // rond. Emoji déjà dans la police embarquée, et dont le rendu Noto est
+  // franchement de cette couleur (vérifié à l'écran : pas le manteau, pas
+  // l'œuf, pas le pingouin).
+  const IMAGES_COULEURS = {
+    rouge: ["🍎", "🍓", "🚗"],
+    bleu: ["👖", "🪣", "🧢"],
+    jaune: ["🍌", "🐥", "☀️"],
+    vert: ["🥦", "🐸", "🐢"],
+    "orange (couleur)": ["🍊", "🥕", "🦊"],
+    violet: ["🍆", "🍇"],
+    noir: ["🎩"],
+    blanc: ["🐑", "🥛"],
+  };
+
   // [ lettre, mot compagnon, emoji ]
   // Premier son sans ambiguïté en français : ni « ch », ni « ph », ni h muet.
   // « wagon » se dit /v/ : W a « wapiti », un des rares mots en /w/.
@@ -237,7 +254,7 @@
     for (const [emoji, mot, cat] of MOTS) {
       // « orange (couleur) » : la précision sert au parent, pas à l'enfant.
       const label = mot.replace(/\s*\(.*\)$/, "");
-      cartes.push(carte(idDe("word", mot), "word", label, cat, {}, [emoji]));
+      cartes.push(carte(idDe("word", mot), "word", label, cat, {}, [emoji].concat(IMAGES_COULEURS[mot] || [])));
     }
     for (const [lettre, mot, emoji] of LETTRES)
       cartes.push(carte("letter-" + lettre, "letter", mot, null, { letter: lettre }, [emoji], NOTES_LETTRES[lettre]));
@@ -253,5 +270,5 @@
     ];
   }
 
-  return { CATEGORIES, SOURCES, RESERVE, MOTS, LETTRES, NOMBRES, groupeReserve, cartesDeDepart, paquetsDeDepart, idDe };
+  return { CATEGORIES, SOURCES, RESERVE, MOTS, IMAGES_COULEURS, LETTRES, NOMBRES, groupeReserve, cartesDeDepart, paquetsDeDepart, idDe };
 });
