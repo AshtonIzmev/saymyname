@@ -141,6 +141,7 @@
 
   // [ lettre, mot compagnon, emoji ]
   // Premier son sans ambiguïté en français : ni « ch », ni « ph », ni h muet.
+  // « wagon » se dit /v/ : W a « wapiti », un des rares mots en /w/.
   // H n'a pas de son en français ; « hibou » est le moins mauvais compagnon
   // et la carte porte une note pour que le parent décide.
   const LETTRES = [
@@ -166,7 +167,7 @@
     ["T", "tortue", "🐢"],
     ["U", "usine", "🏭"],
     ["V", "vache", "🐄"],
-    ["W", "wagon", "🚃"],
+    ["W", "wapiti", "🦌"],
     ["X", "xylophone", "🎶"],
     ["Y", "yoyo", "🪀"],
     ["Z", "zèbre", "🦓"],

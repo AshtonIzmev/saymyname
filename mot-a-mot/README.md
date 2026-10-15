@@ -83,6 +83,11 @@ Le CSS s'interdit toute transition, animation, ombre, dégradé, filtre, `:hover
 et opacité partielle. Aucun cadre autour des images ; traits ≥ 2 px ; aucun gris
 entre `#666` et `#AAA`. Le retour tactile est une inversion binaire tant que le doigt est posé.
 
+Sur un écran rétroéclairé (tablette, ordinateur), le fond est un papier : blanc
+cassé chaud avec un grain léger, parce que le blanc pur y fatigue les yeux. En
+mode **E-ink**, le fond redevient blanc pur et plat : la dalle n'éblouit pas et
+tramerait le grain en bruit.
+
 Purge du ghosting : `motAMot.purgerDalle()` affiche une frame de noir plein
 écran. Pour l'appeler automatiquement toutes les N navigations, passer
 `flashAntiGhosting` à `true` dans `CONFIG` (haut du script d'interface). Si la

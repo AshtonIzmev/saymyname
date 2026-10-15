@@ -9,12 +9,17 @@
 <link rel="icon" href="icones/icone.svg" type="image/svg+xml">
 <style>
 /* L'écran de choix du jeu. Il doit rester lisible sur la liseuse e-ink de
-   Mot à Mot comme sur la tablette des flashcards : noir sur blanc, aplats,
-   aucune animation. */
+   Mot à Mot comme sur la tablette des flashcards : noir sur papier, aplats,
+   aucune animation. Le fond est un blanc cassé chaud avec un grain léger :
+   le blanc pur d'une dalle rétroéclairée fatigue les yeux. */
+:root {
+  --papier: #f6f1e7;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.28 0 0 0 0 0.16 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
+}
 html, body {
   margin: 0;
   height: 100%;
-  background: #fff;
+  background: var(--grain) var(--papier);
   color: #000;
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;

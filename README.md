@@ -1,7 +1,9 @@
 # Jeux des jumeaux
 
 Un écran de choix du jeu et deux applications pour les garçons. Tout est statique :
-pas de serveur d'application, pas de compte, rien ne sort de l'appareil.
+pas de serveur d'application, pas de compte, rien ne sort de l'appareil. Les fonds
+sont un papier (blanc cassé, grain léger) plutôt qu'un blanc pur, sauf en mode
+e-ink de Mot à Mot.
 
 | Chemin | Quoi |
 | --- | --- |

@@ -134,7 +134,9 @@
     const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi });
     $("mode-info").textContent = restant === 0
       ? "Plafond du jour atteint (" + d.daily_cap + " cartes)."
-      : file.length + " carte" + (file.length > 1 ? "s" : "") + " pour cette séance.";
+      : file.length === 0
+        ? "Rien à montrer aujourd'hui : tout est vu, suspendu ou au repos."
+        : file.length + " carte" + (file.length > 1 ? "s" : "") + " pour cette séance.";
     for (const b of $("filtre").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.filtre === filtreChoisi));
   }
 
@@ -151,13 +153,15 @@
     const maintenant = Date.now();
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, maintenant);
     const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, maintenant });
+    // Rien à montrer : on le dit et on reste là. Pas de « fini » verrouillé
+    // trente secondes pour un appui de trop sur une tuile.
+    if (file.length === 0) { rendreInfoMode(); return; }
     seance = {
       id: S.nouvelId(), deck: d.id, mode, filtre: filtreChoisi, file, i: 0,
       enregistrement: { id: null, deck_id: d.id, mode, filter: filtreChoisi, started_at: maintenant, ended_at: null, ended_by: null },
       essai: null,
     };
     seance.enregistrement.id = seance.id;
-    if (file.length === 0) { finir("cap"); return; }
     S.enregistrerSession(seance.enregistrement);
     // Les images sont résolues avant la première carte : l'écran de l'enfant
     // ne montre jamais une image en train de charger.
@@ -293,52 +297,61 @@
   }
 
   // ---------- Gestes du parent sur l'écran de l'enfant ----------
-  //   glisser → : su        glisser ↑ : hésitant      glisser ← : pas su
-  //   glisser ↓ : suivant (mode choix, note automatique)
-  //   appui long : fin       tap sur l'image : désigner (mode choisir)
+  // L'enfant touche à un doigt : un tap sur une image (mode choisir), et rien
+  // d'autre. Le parent note à DEUX doigts. Un doigt qui traîne, une main posée
+  // ou un index qui reste appuyé — les gestes les plus naturels d'un enfant
+  // de deux ans — ne notent donc jamais rien et ne terminent jamais la séance.
+  //   deux doigts → : su     ↑ : hésitant     ← : pas su
+  //   deux doigts ↓ : suivant (mode choix, note automatique)
+  //   deux doigts posés 0,9 s : fin de séance
+  //   trois doigts ou plus (une paume) : rien
   function brancherGestes(zone) {
-    const doigts = new Map();
-    let depart = null, long = null, multi = false, longFait = false, bouge = false;
+    const doigts = new Map(); // pointerId → point de départ
+    let geste = null;         // { max, cible, bouge, longFait, deltas }
+    let long = null;
 
     zone.addEventListener("pointerdown", (ev) => {
       // Un nouveau geste repart de zéro, même si un relâchement s'est perdu.
-      if (ev.isPrimary) doigts.clear();
+      if (ev.isPrimary) { doigts.clear(); geste = { max: 0, cible: ev.target, bouge: false, longFait: false, deltas: [] }; }
+      if (!geste) return;
       doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-      if (doigts.size === 1) {
-        depart = { x: ev.clientX, y: ev.clientY, cible: ev.target };
-        bouge = false; longFait = false; multi = false;
-        clearTimeout(long);
+      geste.max = Math.max(geste.max, doigts.size);
+      clearTimeout(long);
+      if (doigts.size === 2 && !geste.bouge) {
         long = setTimeout(() => {
-          if (!bouge && !multi && doigts.size === 1 && seance) { longFait = true; finir("parent"); }
+          if (geste && !geste.bouge && doigts.size === 2 && seance) { geste.longFait = true; finir("parent"); }
         }, CONFIG.appuiLong);
-      } else {
-        multi = true;
-        clearTimeout(long);
       }
     });
     zone.addEventListener("pointermove", (ev) => {
-      if (!depart || !doigts.has(ev.pointerId)) return;
-      if (Math.hypot(ev.clientX - depart.x, ev.clientY - depart.y) > 15) { bouge = true; clearTimeout(long); }
+      const d = doigts.get(ev.pointerId);
+      if (!d || !geste) return;
+      if (Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 15) { geste.bouge = true; clearTimeout(long); }
     });
     const lever = (ev, annule) => {
-      if (!doigts.has(ev.pointerId)) return;
+      const d = doigts.get(ev.pointerId);
+      if (!d || !geste) return;
       doigts.delete(ev.pointerId);
+      geste.deltas.push([ev.clientX - d.x, ev.clientY - d.y]);
       if (doigts.size > 0) return;
       clearTimeout(long);
-      if (annule || !depart || longFait || !seance) { depart = null; return; }
-      const dx = ev.clientX - depart.x, dy = ev.clientY - depart.y;
-      const cible = depart.cible;
-      depart = null;
-      if (multi) return;
-      if (Math.hypot(dx, dy) >= CONFIG.seuilGlisser) {
-        if (Math.abs(dx) > Math.abs(dy)) noterEtAvancer(dx > 0 ? "knew" : "didnt_know");
-        else if (dy < 0) noterEtAvancer("hesitant");
-        else suivantAvecNoteAuto();
+      const g = geste;
+      geste = null;
+      if (annule || g.longFait || !seance) return;
+      if (g.max === 1) {
+        // L'enfant : un tap sur une image, s'il n'a pas traîné en chemin.
+        if (g.bouge) return;
+        const option = g.cible.closest && g.cible.closest(".option");
+        if (option) toucherOption(Number(option.dataset.option));
         return;
       }
-      if (bouge) return;
-      const option = cible.closest && cible.closest(".option");
-      if (option) toucherOption(Number(option.dataset.option));
+      if (g.max !== 2) return;
+      const dx = g.deltas.reduce((t, v) => t + v[0], 0) / g.deltas.length;
+      const dy = g.deltas.reduce((t, v) => t + v[1], 0) / g.deltas.length;
+      if (Math.hypot(dx, dy) < CONFIG.seuilGlisser) return;
+      if (Math.abs(dx) > Math.abs(dy)) noterEtAvancer(dx > 0 ? "knew" : "didnt_know");
+      else if (dy < 0) noterEtAvancer("hesitant");
+      else suivantAvecNoteAuto();
     };
     zone.addEventListener("pointerup", (ev) => lever(ev, false));
     zone.addEventListener("pointercancel", (ev) => lever(ev, true));
@@ -438,7 +451,8 @@
     for (const p of paquets()) {
       const e = S.entree(p.id, c.id);
       if (!e) continue;
-      d.push(h("span", { class: "drapeau" + (P.estSangsue(e) ? " alerte" : "") }, p.name + " · b" + e.box));
+      d.push(h("span", { class: "drapeau" + (P.estSangsue(e) ? " alerte" : "") },
+        p.name + " · b" + e.box + (P.enRepos(e, maintenant) ? " · repos" : "")));
     }
     if (P.estSuspendue(c, maintenant)) d.push(h("span", { class: "drapeau" }, "suspendue"));
     return h("div", { class: "drapeaux" }, d);
@@ -524,6 +538,23 @@
     const suspendue = P.estSuspendue(c, maintenant);
     const sangsues = paquets().filter((p) => { const e = S.entree(p.id, c.id); return e && P.estSangsue(e); });
 
+    // Par enfant : reposer un mois, ou réveiller. C'est ce qui remplace
+    // « retirer la carte de ce paquet » (qui effacerait son historique).
+    const parEnfant = h("div", { class: "fiche-actions" });
+    for (const p of paquets()) {
+      const e = S.entree(p.id, c.id);
+      if (!e) continue;
+      const repos = P.enRepos(e, maintenant);
+      parEnfant.append(h("button", { type: "button", class: "bouton" + (repos ? "" : " secondaire"), "data-repos": p.id,
+        onclick: () => {
+          S.enregistrerEntree(Object.assign({}, e, repos
+            ? { rest_until: null, fail_count: 0, updated_at: maintenant }
+            : { rest_until: maintenant + 30 * P.JOUR, updated_at: maintenant }));
+          fiche.close(); rendreCartes(); rendreTableau();
+        } },
+        (repos ? "Réveiller pour " : "Reposer un mois pour ") + p.name));
+    }
+
     const historique = h("table", { class: "historique" });
     const revues = revuesListe().filter((r) => r.card_id === c.id).sort((a, b) => b.at - a.at).slice(0, 40);
     for (const r of revues)
@@ -544,11 +575,12 @@
       rendreTableau();
       }
 
-    fiche.append(
+    // `append` du DOM écrit « null » en toutes lettres : on filtre.
+    fiche.append(...[
       h("header", { class: "entete" }, h("button", { type: "button", class: "lien", onclick: () => fiche.close() }, "Fermer"),
         h("h1", null, c.type === "letter" ? c.extras.letter + " " + c.label : c.type === "number" ? c.extras.digit + " " + c.label : c.label), h("span")),
       sangsues.length ? h("p", { class: "alerte-sangsue" }, "Ratée 4 fois de suite (" + sangsues.map((p) => p.name).join(", ") +
-        ") : reprendre la photo, ou suspendre un mois.") : null,
+        ") : elle se repose une semaine. Reprendre la photo, ou la reposer un mois.") : null,
       images,
       h("div", { class: "formulaire" },
         h("label", { class: "champ" }, h("span", null, c.type === "letter" ? "Mot compagnon" : "Mot"), label),
@@ -561,8 +593,11 @@
           ? h("button", { type: "button", class: "bouton", onclick: () => sauverFiche({ suspended: false, suspended_until: null }) }, "Réactiver")
           : h("button", { type: "button", class: "bouton secondaire", onclick: () => sauverFiche({ suspended_until: Date.now() + 30 * P.JOUR }) }, "Suspendre un mois"),
         suspendue ? null : h("button", { type: "button", class: "bouton danger", onclick: () => sauverFiche({ suspended: true }) }, "Suspendre")),
+      parEnfant.childElementCount ? h("h2", null, "Par enfant") : null,
+      parEnfant,
       h("h2", null, "Historique"),
-      revues.length ? historique : h("p", { class: "discret" }, "Jamais montrée."));
+      revues.length ? historique : h("p", { class: "discret" }, "Jamais montrée."),
+    ].filter(Boolean));
     fiche.showModal();
   }
 
@@ -671,11 +706,24 @@
   }
 
   // Un rappel discret au départ, seulement quand il y a des progrès à perdre.
+  // Et, avant tout, l'appareil qui n'enregistre plus : ce n'est pas discret.
   function afficherRappelSauvegarde() {
+    const statut = $("statut-depart");
+    statut.classList.remove("erreur");
+    if (!S.persistant) {
+      statut.textContent = "Ce navigateur ne garde rien : les progrès seront perdus à la fermeture.";
+      statut.classList.add("erreur");
+      return;
+    }
+    if (S.derniereErreur) {
+      statut.textContent = "L'appareil n'enregistre plus (stockage plein ?) : exporter une sauvegarde maintenant, puis libérer de la place.";
+      statut.classList.add("erreur");
+      return;
+    }
     const t = derniereSauvegarde();
     const progres = Object.keys(S.etat.reviews).length > 0;
     const jours = t ? Math.floor((Date.now() - t) / P.JOUR) : Infinity;
-    $("statut-depart").textContent = progres && jours >= CONFIG.rappelSauvegarde
+    statut.textContent = progres && jours >= CONFIG.rappelSauvegarde
       ? (t ? "Dernière sauvegarde il y a " + jours + " jours" : "Aucune sauvegarde") + " : Parent → Réglages → Exporter."
       : "";
   }

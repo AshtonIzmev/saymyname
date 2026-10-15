@@ -1,11 +1,17 @@
 /* ------------------------------------------------------------------------
-   Deux mondes. L'écran de l'enfant : blanc, nu, immense, une chose à la fois,
+   Deux mondes. L'écran de l'enfant : nu, immense, une chose à la fois,
    aucun bouton, aucune animation (sauf le fondu prévu du mode choix).
    Les écrans du parent : sobres, lisibles au téléphone, rien de plus.
+   Le fond des deux est un papier : blanc cassé chaud, grain léger. Le blanc
+   pur d'une tablette rétroéclairée fatigue les yeux, ceux de l'enfant comme
+   ceux du parent. Les cartes, boutons et champs restent blancs dessus.
    ------------------------------------------------------------------------ */
 :root {
   --encre: #111;
   --fond: #fff;
+  --papier: #f6f1e7;
+  --doux: #ece6da;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.28 0 0 0 0 0.16 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
   --discret: #5c5c5c;
   --trait: #d9d9d9;
   --accent: #1f5fbf;
@@ -16,7 +22,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--fond);
+  background: var(--grain) var(--papier);
   color: var(--encre);
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
@@ -48,8 +54,8 @@ h2 { font-size: 17px; margin: 28px 0 8px; }
 .discret { color: var(--discret); font-size: 14px; }
 .centre { text-align: center; }
 .message { min-height: 1.4em; font-weight: 600; }
-.message.erreur { color: var(--danger); }
-code { background: #f2f2f2; padding: 0 4px; border-radius: 3px; }
+.message.erreur, .discret.erreur { color: var(--danger); font-weight: 600; }
+code { background: var(--doux); padding: 0 4px; border-radius: 3px; }
 
 .bouton {
   display: inline-flex;
@@ -111,7 +117,7 @@ code { background: #f2f2f2; padding: 0 4px; border-radius: 3px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f0f0;
+  background: var(--doux);
   font-size: min(18vw, 120px);
 }
 .jumeau .portrait img { width: 100%; height: 100%; object-fit: cover; }
@@ -206,7 +212,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
   width: 56px;
   height: 56px;
   border-radius: 8px;
-  background: #f4f4f4;
+  background: var(--doux);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,15 +224,15 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .liste .titre { font-weight: 600; }
 .liste .infos { font-size: 13px; color: var(--discret); }
 .drapeaux { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.drapeau { font-size: 12px; padding: 2px 6px; border-radius: 6px; background: #f0f0f0; white-space: nowrap; }
+.drapeau { font-size: 12px; padding: 2px 6px; border-radius: 6px; background: var(--doux); white-space: nowrap; }
 .drapeau.alerte { background: #fde3e0; color: var(--danger); }
 
 /* Tableau de bord : les deux enfants côte à côte, jamais classés. */
 .cote-a-cote { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.carte-stats { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; }
+.carte-stats { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; background: var(--fond); }
 .carte-stats h3 { margin: 0 0 8px; font-size: 17px; }
 .boites { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; margin-bottom: 12px; }
-.boites div { background: #f4f4f4; border-radius: 6px; padding: 6px 0; }
+.boites div { background: var(--doux); border-radius: 6px; padding: 6px 0; }
 .boites b { display: block; font-size: 20px; }
 .boites small { color: var(--discret); font-size: 11px; }
 .chiffres { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 14px; }
@@ -235,8 +241,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .mini-liste { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
 .mini-liste button { font: inherit; color: var(--accent); background: none; border: 0; padding: 2px 0; cursor: pointer; text-align: left; }
 
-.paquet-reglage { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; }
-.paquet-reglage .portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; }
+.paquet-reglage { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; background: var(--fond); }
+.paquet-reglage .portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: var(--doux); display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; }
 .paquet-reglage .portrait img { width: 100%; height: 100%; object-fit: cover; }
 .paquet-reglage .champs { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
 
@@ -260,7 +266,7 @@ dialog#fiche::backdrop { background: rgba(0, 0, 0, .45); }
 .enfant {
   position: fixed;
   inset: 0;
-  background: #fff;
+  background: var(--grain) var(--papier);
   overflow: hidden;
   touch-action: none;
   user-select: none;

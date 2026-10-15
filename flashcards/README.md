@@ -6,6 +6,8 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 
 - Le parent est toujours là : l'application lui fait signe, elle n'occupe jamais
   l'enfant seule.
+- L'enfant touche à un doigt, le parent note à deux : un doigt qui traîne ou une
+  main posée ne notent jamais rien et ne terminent jamais la séance.
 - Rien ne récompense le tapotement : pas d'animation, pas de score visible des
   enfants. Et aucun son : l'application est muette, c'est le parent qui parle.
 - Une chose à la fois : une grande image, un mot, rien d'autre.
@@ -16,8 +18,10 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 1. **Départ** : toucher la tuile de l'enfant (photo et prénom dans *Parent → Réglages*).
 2. **Mode** : *Montrer* ou *Choisir*. Au-dessus, *Tout / Lettres / Chiffres*.
 3. C'est parti. La séance s'arrête au plafond du jour (10 cartes par défaut, 6 à 15)
-   ou par un appui long du parent. L'écran affiche « fini » et reste verrouillé
-   30 secondes. Il vaut mieux qu'ils en redemandent.
+   ou par un appui long du parent, à deux doigts. L'écran affiche « fini » et reste
+   verrouillé 30 secondes. Il vaut mieux qu'ils en redemandent. S'il n'y a rien à
+   montrer (plafond atteint, tout vu, tout au repos), l'écran du mode le dit et
+   on reste là : pas de « fini » verrouillé pour un appui de trop.
 
 ### Montrer (expressif)
 
@@ -39,15 +43,18 @@ carte que l'enfant connaît déjà (boîte 3+). Il ne compte jamais comme révis
 
 ### Les gestes du parent
 
-Invisibles des enfants : aucun bouton sur leur écran.
+Invisibles des enfants : aucun bouton sur leur écran. Et hors de leur portée :
+tout geste du parent se fait **à deux doigts**. À un doigt, l'enfant ne peut que
+toucher une image en mode *Choisir* ; un doigt qui traîne, un index qui reste
+appuyé, une paume posée ne font rien.
 
-| Geste | Effet |
+| Geste (deux doigts) | Effet |
 | --- | --- |
 | Glisser → | **Su** : la carte monte d'une boîte |
 | Glisser ↑ | **Hésitant** : même boîte, revue à la prochaine séance |
 | Glisser ← | **Pas su** : retour en boîte 1 |
 | Glisser ↓ | *Choisir* seulement : suivante, avec la note automatique |
-| Appui long | Fin de séance → « fini » |
+| Appui long (0,9 s) | Fin de séance → « fini » |
 
 En mode *Choisir*, glisser →, ↑ ou ← remplace la note automatique.
 
@@ -65,7 +72,8 @@ Tout se fait sur la tablette : elle a l'appareil photo.
   tête des nouvelles).
 - **Cartes** : filtres par type, boîte, source, signalées, suspendues. Toucher une carte ouvre sa fiche : images (choisir la principale, en
   ajouter une), mot, paquets, suspendre (un mois ou
-  indéfiniment), historique des révisions.
+  indéfiniment, pour les deux enfants), **reposer un mois pour un seul enfant**
+  (ou le réveiller), historique des révisions.
 - **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
   reconnus en 7 jours, jamais montrées, séances, durée moyenne, fin par plafond ou
   par le parent, cartes en échec 3 fois de suite.
@@ -93,14 +101,25 @@ Leitner à cinq boîtes, par enfant (`planificateur.js`, testé dans
 | 5 | 21 jours | maîtrisée (surtout comme distracteur) |
 
 Sélection du jour, dans l'ordre : les dues des boîtes 2–4 (la plus ancienne
-d'abord), puis la boîte 1 (ratées avant jamais vues), au plus 3 nouvelles par
-séance, au plus 50 % de lettres + chiffres (sauf séance *Lettres* ou *Chiffres*),
-mélangées sans jamais deux fois le même mot à la suite. Le plafond est quotidien :
-une deuxième séance le même jour ne propose que le reste.
+d'abord), puis **au plus 3 jamais vues** (les dernières ajoutées d'abord ; à date
+égale, les mots avant les chiffres et les lettres, au hasard), puis les ratées de
+la boîte 1 (la moins récemment vue d'abord). Au plus 50 % de lettres + chiffres
+(sauf séance *Lettres* ou *Chiffres*), mélangées sans jamais deux fois le même
+mot à la suite. Le plafond est quotidien : une deuxième séance le même jour ne
+propose que le reste.
+
+Les nouvelles passent avant les ratées, pas l'inverse : une ratée revient de
+toute façon à chaque séance, tandis qu'un enfant qui rate beaucoup ne verrait
+sinon plus jamais rien de nouveau et tournerait sur les mêmes dix cartes pendant
+des mois. Un paquet tout neuf ouvre donc sur trois mots, pas sur A, B, C.
 
 Une carte *su* trois fois de suite en boîte 4 passe en boîte 5. Une carte ratée 4
-fois de suite en boîte 1 est **signalée**, jamais retirée : reprendre la photo
-ou la suspendre un mois.
+fois de suite en boîte 1 est **signalée** et **se repose une semaine** : on ne
+drille pas un enfant de deux ans sur ce qu'il rate, on y revient plus tard. Elle
+n'est jamais retirée. Le repos vaut pour un enfant, pas pour la carte : depuis la
+fiche, le parent peut aussi la reposer un mois pour l'un des deux, ou la
+réveiller. Au retour, un *su* efface la série ; un nouvel échec la repose une
+semaine de plus.
 
 Chaque mot peut avoir plusieurs images : la principale jusqu'à la boîte 3, puis
 toutes à tour de rôle, pour que l'enfant apprenne le mot et pas l'image.
@@ -122,14 +141,18 @@ véhicules, nature, couleurs, formes), les 26 lettres avec un compagnon au premi
 son sans ambiguïté, les chiffres 1 à 5 avec trois objets différents chacun. Semés
 dans les deux paquets. Les emoji sont des remplaçants : les photos du parent et les
 dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une image).
-`H` (muet en français) et `X` (pas d'emoji xylophone) portent une note.
+`H` (muet en français) et `X` (pas d'emoji xylophone) portent une note. `W` a
+« wapiti », l'un des rares mots français en /w/ (« wagon » se dit /v/).
 
 ## Données et sauvegarde
 
 Pas de serveur. Tout vit sur l'appareil, dans le stockage du navigateur
 (IndexedDB) : cartes, photos, boîtes, séances, révisions. Une séance n'attend
 jamais le réseau, et rien ne sort de la tablette. L'application demande au
-navigateur de ne pas effacer ces données pour gagner de la place.
+navigateur de ne pas effacer ces données pour gagner de la place. Si une écriture
+est refusée (stockage plein), le départ l'affiche en rouge : exporter, puis
+libérer de la place. Si le navigateur n'a pas de stockage du tout, il le dit
+aussi : rien ne survivra à la fermeture.
 
 C'est aussi le **seul exemplaire**. Effacer les données de Chrome, réinitialiser ou
 perdre la tablette, et tout est perdu. D'où la sauvegarde, dans *Parent → Réglages* :
@@ -137,7 +160,9 @@ perdre la tablette, et tout est perdu. D'où la sauvegarde, dans *Parent → Ré
 - **Exporter** télécharge un fichier `flashcards-AAAA-MM-JJ.json` (dossier
   *Téléchargements*) : tout l'état, avec chaque photo dedans.
   Compter quelques dizaines de Mo une fois le paquet rempli de photos.
-  Le garder en lieu sûr (Drive, ordinateur, clé USB).
+  Le garder en lieu sûr (Drive, ordinateur, clé USB). Il contient les prénoms
+  et les photos des enfants en clair : c'est un fichier de famille, pas un
+  fichier à laisser traîner sur une tablette partagée.
 - **Importer**, sur un autre appareil (ou le même après une réinitialisation),
   après confirmation, **remplace tout** ce qu'il contient par la sauvegarde. Ce
   n'est pas une fusion : deux appareils ne doivent pas être utilisés en parallèle,
@@ -163,10 +188,19 @@ ligne discrète.
   pour que les glissements de notation ne soient jamais interceptés.
 
 Ouvrir une fois l'application en ligne : le service worker la garde ensuite pour
-démarrer sans réseau.
+démarrer sans réseau. Si le réseau est là mais traîne (wifi à moitié mort), la
+copie locale sert au bout de 3 secondes.
 
 ## Choix faits là où le cahier des charges laissait de la marge
 
+- **Deux doigts pour le parent.** Le cahier des charges voulait des gestes
+  invisibles des enfants ; invisibles ne suffisait pas, un doigt qui traîne
+  notait. À deux doigts, un enfant de deux ans ne note rien par accident.
+- **Nouvelles avant ratées, et repos d'une semaine au quatrième échec.** Une
+  simulation sur soixante jours montrait qu'un enfant qui ne sait que 25 % des
+  cartes ne voyait que 14 cartes distinctes en deux mois, drillé sur ses échecs.
+- **Mots avant lettres** à date d'ajout égale, pour qu'un paquet neuf n'ouvre
+  pas sur l'alphabet.
 - **Glisser ↓** en mode *Choisir* : il fallait un geste pour « passer en gardant
   la note automatique » ; les trois autres directions la remplacent.
 - **Boîte 5 due** (après 21 jours) : revue après les boîtes 2–4, pour ne pas
@@ -181,3 +215,14 @@ démarrer sans réseau.
 Prévu en v3 par le cahier des charges : minuscules, chiffres 6–10, choix à trois
 images, syllabes. Les questions ouvertes restent ouvertes : même jeu de départ pour
 les deux (c'est le cas aujourd'hui).
+
+Limites connues, laissées telles quelles pour l'instant :
+
+- chaque note réécrit tout l'état en un seul enregistrement, et l'export
+  construit un seul fichier JSON avec les photos encodées dedans : au-delà de
+  quelques centaines de photos, prévoir un export en archive ;
+- le mode *Choisir* à deux images laisse une chance sur deux au hasard, et le
+  distracteur est toujours d'une autre catégorie : trois images et des
+  distracteurs plus proches à mesure que la carte monte sont la suite logique ;
+- l'application ne dit rien au parent de ce qu'il pourrait dire (quel son pour
+  une lettre, quelle question) : c'est le README qui le fait, ou personne.

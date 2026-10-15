@@ -54,32 +54,27 @@ async function ouvrir(chemin, taille) {
   return { page, contexte, erreurs };
 }
 
-async function glisser(page, dx, dy) {
-  const x = 640, y = 400;
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.mouse.move(x + dx / 2, y + dy / 2, { steps: 3 });
-  await page.mouse.move(x + dx, y + dy, { steps: 3 });
-  await page.mouse.up();
-}
-
 // Gestes au doigt (et non à la souris) : chaque contact a son propre pointerId,
-// comme sur la tablette.
+// comme sur la tablette. À un doigt, c'est l'enfant ; à deux, le parent.
 async function doigt(page) {
   const cdp = await page.context().newCDPSession(page);
   const envoyer = (type, points) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points });
+  const X = 640, Y = 400;
+  const points = (n, dx, dy) => Array.from({ length: n }, (_, i) => ({ id: i + 1, x: X + i * 60 + dx, y: Y + dy }));
+  const glisser = async (n, dx, dy) => {
+    await envoyer("touchStart", points(n, 0, 0));
+    for (let k = 1; k <= 4; k++) await envoyer("touchMove", points(n, (dx * k) / 4, (dy * k) / 4));
+    await envoyer("touchEnd", []);
+  };
+  const appuiLong = async (n, ms) => {
+    await envoyer("touchStart", points(n, 0, 0));
+    await page.waitForTimeout(ms);
+    await envoyer("touchEnd", []);
+  };
   return {
-    async appuiLong(x, y, ms) {
-      await envoyer("touchStart", [{ x, y }]);
-      await page.waitForTimeout(ms);
-      await envoyer("touchEnd", []);
-    },
-    async glisser(dx, dy) {
-      const x = 640, y = 400;
-      await envoyer("touchStart", [{ x, y }]);
-      for (let k = 1; k <= 4; k++) await envoyer("touchMove", [{ x: x + (dx * k) / 4, y: y + (dy * k) / 4 }]);
-      await envoyer("touchEnd", []);
-    },
+    unDoigt: { glisser: (dx, dy) => glisser(1, dx, dy), appuiLong: (ms) => appuiLong(1, ms) },
+    deuxDoigts: { glisser: (dx, dy) => glisser(2, dx, dy), appuiLong: (ms) => appuiLong(2, ms) },
+    troisDoigts: { glisser: (dx, dy) => glisser(3, dx, dy), appuiLong: (ms) => appuiLong(3, ms) },
   };
 }
 
@@ -129,15 +124,17 @@ test("accueil : deux jeux, chacun mène à son application et en revient", async
   await c2.close();
 });
 
-test("séance « montrer » : écran nu, glissements notés, appui long → « fini » verrouillé", async () => {
+test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le parent note à deux doigts, appui long → « fini » verrouillé", async () => {
   const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html");
   assert.equal(await page.locator(".jumeau").count(), 2);
   await page.evaluate(() => { flashcards.config.verrouFini = 1500; });
   await commencerSeance(page, 0, "show");
 
-  // Premier jour : tout est neuf, donc trois cartes (au plus trois nouvelles).
+  // Premier jour : tout est neuf, donc trois cartes (au plus trois nouvelles),
+  // et des mots : un enfant de deux ans ne commence pas par l'alphabet.
   const file = await page.evaluate(() => flashcards.seance.file.map((c) => c.id));
   assert.equal(file.length, 3);
+  assert.ok(file.every((id) => id.startsWith("word-")), "un paquet neuf ouvre sur des mots : " + file);
   // Rien d'autre qu'une image et un mot : aucun bouton, aucun lien, aucune barre.
   assert.equal(await page.locator("#vue-enfant button, #vue-enfant a, #vue-enfant input").count(), 0);
   assert.equal(await page.locator("#scene .visuel").count(), 1);
@@ -149,8 +146,18 @@ test("séance « montrer » : écran nu, glissements notés, appui long → « f
   await page.click("#scene .visuel");
   assert.equal(await page.evaluate(() => flashcards.seance.i), 0);
 
-  await glisser(page, 250, 0);   // → su
-  await glisser(page, 0, -250);  // ↑ hésitant
+  // Les gestes d'un enfant : un doigt qui traîne, un doigt qui reste posé,
+  // une paume. Rien ne se note, rien ne se termine.
+  const toucher = await doigt(page);
+  await toucher.unDoigt.glisser(250, 0);
+  await toucher.unDoigt.appuiLong(1100);
+  await toucher.troisDoigts.glisser(250, 0);
+  await toucher.troisDoigts.appuiLong(1100);
+  assert.equal(await page.evaluate(() => flashcards.seance.i), 0, "un doigt (ou une paume) ne note jamais");
+  assert.equal(await page.isVisible("#vue-enfant"), true, "un doigt posé ne termine pas la séance");
+
+  await toucher.deuxDoigts.glisser(250, 0);   // → su
+  await toucher.deuxDoigts.glisser(0, -250);  // ↑ hésitant
   assert.equal(await page.evaluate(() => flashcards.seance.i), 2);
   const entrees = await page.evaluate((ids) => ids.map((id) => Stockage.entree("deck-1", id)), file);
   assert.deepEqual(entrees.slice(0, 2).map((e) => [e.box, e.reviews]), [[2, 1], [1, 1]]);
@@ -158,9 +165,8 @@ test("séance « montrer » : écran nu, glissements notés, appui long → « f
   // Le jumeau 2 n'est pas touché.
   assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, file[0]), 0);
 
-  // Appui long au doigt : fin de séance, par le parent.
-  const toucher = await doigt(page);
-  await toucher.appuiLong(640, 400, 1100);
+  // Appui long à deux doigts : fin de séance, par le parent.
+  await toucher.deuxDoigts.appuiLong(1100);
   assert.equal(await page.isVisible("#vue-fini"), true);
   assert.equal((await page.textContent("#vue-fini")).trim(), "fini");
   const seance = await page.evaluate(() => Object.values(Stockage.etat.sessions)[0]);
@@ -170,10 +176,10 @@ test("séance « montrer » : écran nu, glissements notés, appui long → « f
   assert.equal(await page.isVisible("#vue-fini"), true);
   await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
 
-  // Séance suivante sur la même page, au doigt : les glissements marchent
-  // encore après un appui long.
+  // Séance suivante sur la même page : les glissements marchent encore
+  // après un appui long.
   await commencerSeance(page, 0, "show");
-  await toucher.glisser(250, 0);
+  await toucher.deuxDoigts.glisser(250, 0);
   assert.equal(await page.evaluate(() => flashcards.seance.i), 1, "le glissement après un appui long est bien noté");
   await page.keyboard.press("Escape");
   await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
@@ -200,6 +206,7 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   assert.notEqual(distracteur.id, cible);
   const categories = await page.evaluate((d) => [Planificateur.categorie(flashcards.carteCourante), Planificateur.categorie(d)], distracteur);
   assert.notEqual(categories[0], categories[1], "jamais deux animaux face à face");
+  const toucher = await doigt(page);
   await page.locator("#scene .option").nth(cote).tap();
   const apres = await page.evaluate((c) => ({
     estompee: document.querySelectorAll("#scene .option")[1 - c].classList.contains("estompee"),
@@ -207,7 +214,7 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   }), cote);
   assert.equal(apres.estompee, true);
   assert.ok(apres.etiquette.length > 0, "l'étiquette apparaît sous la cible");
-  await glisser(page, 0, 250); // ↓ : on garde la note automatique
+  await toucher.deuxDoigts.glisser(0, 250); // ↓ : on garde la note automatique
   let r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible);
   assert.deepEqual([r.grade, r.touches, r.mode, r.distractor_card_id], ["knew", 1, "choice", distracteur.id]);
 
@@ -220,7 +227,7 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   await page.waitForTimeout(1100);
   await page.keyboard.press(String(2 - cote));
   assert.equal(await page.evaluate(() => flashcards.seance.essai.auto), "didnt_know");
-  await glisser(page, 0, -250);
+  await toucher.deuxDoigts.glisser(0, -250);
   r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible2);
   assert.deepEqual([r.grade, r.touches], ["hesitant", 2]);
   // La révision ne compte que pour la cible, jamais pour le distracteur.
@@ -301,9 +308,8 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
   await contexte.close();
 });
 
-test("plafond quotidien : une deuxième séance le même jour ne propose que le reste", async () => {
+test("plafond quotidien : une deuxième séance le même jour ne propose que le reste, et rien ne verrouille l'écran", async () => {
   const { page, contexte } = await ouvrir("/flashcards/index.html");
-  await page.evaluate(() => { flashcards.config.verrouFini = 200; });
   // Des révisions « aujourd'hui » pour le jumeau 2 jusqu'au plafond.
   await page.evaluate(() => {
     const d = Stockage.etat.decks["deck-2"];
@@ -315,7 +321,49 @@ test("plafond quotidien : une deuxième séance le même jour ne propose que le 
   await page.locator(".jumeau").nth(1).click();
   assert.match(await page.textContent("#mode-info"), /Plafond du jour atteint/);
   await page.click("#mode-montrer");
-  assert.equal(await page.isVisible("#vue-fini"), true);
+  // Un appui de trop sur une tuile n'enferme pas le parent trente secondes
+  // devant « fini » : on reste sur le choix du mode.
+  assert.equal(await page.isVisible("#vue-mode"), true);
+  assert.equal(await page.isVisible("#vue-fini"), false);
+  assert.equal(await page.evaluate(() => Object.keys(Stockage.etat.sessions).length), 0, "aucune séance vide enregistrée");
+  await contexte.close();
+});
+
+test("fiche : reposer une carte pour un seul enfant, et l'écran de l'enfant prévient quand rien ne s'enregistre", async () => {
+  const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html#parent");
+  await page.click("[data-onglet='cartes']");
+  await page.fill("#filtre-texte", "chien");
+  await page.click("#liste-cartes li");
+  await page.click("#fiche button[data-repos='deck-1']");
+  const repos = await page.evaluate(() => ({
+    j1: Planificateur.enRepos(Stockage.entree("deck-1", "word-chien"), Date.now()),
+    j2: Planificateur.enRepos(Stockage.entree("deck-2", "word-chien"), Date.now()),
+    drapeau: document.querySelector("#liste-cartes li .drapeaux").textContent,
+  }));
+  assert.deepEqual([repos.j1, repos.j2], [true, false], "le repos ne vaut que pour un enfant");
+  assert.match(repos.drapeau, /repos/);
+  // Le jumeau 1 ne la voit plus en séance ; le jumeau 2 si.
+  const vue = await page.evaluate(() => [1, 2].map((n) =>
+    Planificateur.choisirSession(Stockage.etat.cards, Stockage.entrees("deck-" + n), { cap: 200, maxNouvelles: 200 }).some((c) => c.id === "word-chien")));
+  assert.deepEqual(vue, [false, true]);
+  // Réveiller.
+  await page.click("#liste-cartes li");
+  assert.match(await page.textContent("#fiche button[data-repos='deck-1']"), /Réveiller/);
+  await page.click("#fiche button[data-repos='deck-1']");
+  assert.equal(await page.evaluate(() => Planificateur.enRepos(Stockage.entree("deck-1", "word-chien"), Date.now())), false);
+
+  // Le stockage refuse d'écrire (plein, fermé…) : le départ le dit, en rouge,
+  // au lieu de laisser noter dans le vide.
+  await page.evaluate(async () => {
+    IDBObjectStore.prototype.put = () => { throw new DOMException("plein", "QuotaExceededError"); };
+    Stockage.enregistrerPaquet(Object.assign({}, Stockage.etat.decks["deck-1"], { name: "Adam" }));
+    await new Promise((ok) => setTimeout(ok, 50));
+  });
+  assert.ok(await page.evaluate(() => !!Stockage.derniereErreur), "l'erreur est retenue");
+  await page.click("#parent-fermer");
+  assert.match(await page.textContent("#statut-depart"), /n'enregistre plus/);
+  assert.equal(await page.$eval("#statut-depart", (el) => el.classList.contains("erreur")), true);
+  assert.deepEqual(erreurs, []);
   await contexte.close();
 });
 

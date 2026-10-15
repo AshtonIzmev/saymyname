@@ -23,7 +23,8 @@
   const PLAFOND_MAX = 15;
   const NOUVELLES_MAX = 3;
   const SERIE_BOITE_5 = 3; // trois « su » d'affilée en boîte 4 → boîte 5
-  const SEUIL_SANGSUE = 4; // quatre échecs d'affilée en boîte 1 → signalée
+  const SEUIL_SANGSUE = 4; // quatre échecs d'affilée en boîte 1 → signalée, et au repos
+  const REPOS_JOURS = 7;   // une carte signalée se repose une semaine avant de revenir
 
   function debutDuJour(t) {
     const d = new Date(t);
@@ -53,6 +54,13 @@
     return !!carte.suspended || (carte.suspended_until != null && carte.suspended_until > maintenant);
   }
 
+  // Repos d'une entrée : propre à un enfant, contrairement à la suspension qui
+  // vaut pour la carte entière. Posé par le planificateur (quatrième échec)
+  // ou par le parent depuis la fiche (« reposer un mois pour Adam »).
+  function enRepos(entree, maintenant) {
+    return entree.rest_until != null && entree.rest_until > maintenant;
+  }
+
   // `streak` compte les « su » d'affilée dans la boîte courante : il retombe à
   // zéro à chaque changement de boîte et à chaque note qui n'est pas « su ».
   // C'est ce qui rend lisible la règle « trois fois de suite en boîte 4 ».
@@ -66,6 +74,7 @@
     });
     if (note === "knew") {
       n.fail_count = 0;
+      n.rest_until = null;
       if (entree.box < 4) {
         n.box = entree.box + 1;
         n.streak = 0;
@@ -85,12 +94,17 @@
       n.streak = 0;
       n.fail_count = (entree.fail_count || 0) + 1;
       n.due_at = maintenant;
+      // Quatrième échec d'affilée : la carte se repose une semaine. On ne
+      // drille pas un enfant de deux ans sur ce qu'il rate ; on y revient plus
+      // tard, avec une autre image si le parent en a repris une. Elle reste
+      // signalée tant qu'un « su » n'a pas effacé la série.
+      if (n.fail_count >= SEUIL_SANGSUE) n.rest_until = debutDuJour(maintenant) + REPOS_JOURS * JOUR;
     }
     return n;
   }
 
   // Signalée, jamais retirée : le parent décide (reprendre la photo,
-  // réenregistrer le son, suspendre un mois).
+  // reposer un mois pour cet enfant, suspendre la carte).
   function estSangsue(entree) {
     return entree.box === 1 && (entree.fail_count || 0) >= SEUIL_SANGSUE;
   }
@@ -118,16 +132,21 @@
     return carte.type === "letter" || carte.type === "number";
   }
 
+  function fisherYates(liste, alea) {
+    const t = liste.slice();
+    for (let i = t.length - 1; i > 0; i--) {
+      const j = Math.floor(alea() * (i + 1));
+      [t[i], t[j]] = [t[j], t[i]];
+    }
+    return t;
+  }
+
   // Mélange de Fisher-Yates, puis on reconstruit la file en prenant chaque
   // fois, parmi les cartes dont le mot diffère de la précédente, celle dont le
   // mot reste le plus fréquent (à égalité, l'ordre mélangé décide). C'est ce
   // qui évite de se retrouver avec deux « bateau » à la fin.
   function melanger(cartesOrdonnees, alea) {
-    const t = cartesOrdonnees.slice();
-    for (let i = t.length - 1; i > 0; i--) {
-      const j = Math.floor(alea() * (i + 1));
-      [t[i], t[j]] = [t[j], t[i]];
-    }
+    const t = fisherYates(cartesOrdonnees, alea);
     const file = [];
     while (t.length) {
       const precedent = file.length ? motCle(file[file.length - 1]) : null;
@@ -144,12 +163,24 @@
     return file;
   }
 
+  // Rang d'une nouvelle carte, à date d'ajout égale : les mots d'abord, puis
+  // les chiffres, puis les lettres. Sans cela, un paquet tout neuf ouvrirait
+  // sur A, B, C (les identifiants « letter-… » se trient avant « word-… »),
+  // et un enfant de deux ans verrait l'alphabet avant un seul mot.
+  function rangNouvelle(carte) {
+    return carte.type === "word" ? 0 : carte.type === "number" ? 1 : 2;
+  }
+
   // Sélection d'une séance. `cartes` : objet id → carte. `entrees` : lignes
   // deck_card du paquet. Renvoie les cartes, dans l'ordre de présentation.
   //   1. Les dues des boîtes 2 à 4 (puis 5), la plus anciennement due d'abord.
-  //   2. Le reste en boîte 1 : les ratées avant les jamais vues.
-  //   3. Au plus trois jamais vues par séance (les plus récemment ajoutées
-  //      d'abord : une carte créée au téléphone apparaît à la séance suivante).
+  //   2. Jusqu'à trois jamais vues : les plus récemment ajoutées d'abord (une
+  //      carte créée au téléphone apparaît à la séance suivante), puis les mots
+  //      avant les chiffres et les lettres, au hasard parmi les égales. Elles
+  //      passent AVANT les ratées : sinon un enfant qui rate beaucoup ne voit
+  //      plus jamais rien de nouveau, et tourne sur les mêmes dix cartes.
+  //   3. Le reste en boîte 1 : les ratées, la moins récemment vue d'abord.
+  //      Jamais une carte au repos (quatrième échec, ou décision du parent).
   //   4. Au plus 50 % de lettres + chiffres, sauf séance lettres ou chiffres.
   //   5. Mélange, jamais deux fois le même mot à la suite.
   function choisirSession(cartes, entrees, options) {
@@ -160,7 +191,7 @@
     const eligibles = [];
     for (const e of entrees) {
       const c = cartes[e.card_id];
-      if (!c || estSuspendue(c, maintenant) || !correspondFiltre(c, o.filtre)) continue;
+      if (!c || estSuspendue(c, maintenant) || enRepos(e, maintenant) || !correspondFiltre(c, o.filtre)) continue;
       eligibles.push([e, c]);
     }
     const dues = eligibles
@@ -169,14 +200,15 @@
     const ratees = eligibles
       .filter(([e]) => e.box === 1 && e.reviews > 0)
       .sort(([a], [b]) => (a.last_seen_at || 0) - (b.last_seen_at || 0));
-    const nouvelles = eligibles
-      .filter(([e]) => e.box === 1 && !(e.reviews > 0))
-      .sort(([, a], [, b]) => (b.created_at || 0) - (a.created_at || 0) || (a.id < b.id ? -1 : 1));
+    // Mélangées d'abord, puis triées (le tri est stable) : à date et à type
+    // égaux, c'est le hasard qui ordonne, pas l'alphabet.
+    const nouvelles = fisherYates(eligibles.filter(([e]) => e.box === 1 && !(e.reviews > 0)), o.alea)
+      .sort(([, a], [, b]) => (b.created_at || 0) - (a.created_at || 0) || rangNouvelle(a) - rangNouvelle(b));
 
     const limiteLN = o.filtre === "tout" ? Math.floor(o.cap / 2) : Infinity;
     const choisies = [];
     let nNouvelles = 0, nLN = 0;
-    for (const [e, c] of dues.concat(ratees, nouvelles)) {
+    for (const [e, c] of dues.concat(nouvelles, ratees)) {
       if (choisies.length >= o.cap) break;
       const neuve = e.box === 1 && !(e.reviews > 0);
       if (neuve && nNouvelles >= o.maxNouvelles) continue;
@@ -197,7 +229,7 @@
     const candidats = [];
     for (const e of entrees) {
       const c = cartes[e.card_id];
-      if (!c || c.id === cible.id || c.type !== cible.type || estSuspendue(c, maintenant)) continue;
+      if (!c || c.id === cible.id || c.type !== cible.type || estSuspendue(c, maintenant) || enRepos(e, maintenant)) continue;
       if (categorie(c) === categorie(cible) || motCle(c) === motCle(cible)) continue;
       candidats.push([e, c]);
     }
@@ -239,8 +271,8 @@
   }
 
   return {
-    JOUR, INTERVALLES, NOTES, PLAFOND_DEFAUT, PLAFOND_MIN, PLAFOND_MAX, NOUVELLES_MAX, SEUIL_SANGSUE,
-    debutDuJour, echeance, nouvelleEntree, estDue, estSuspendue, noter, estSangsue,
+    JOUR, INTERVALLES, NOTES, PLAFOND_DEFAUT, PLAFOND_MIN, PLAFOND_MAX, NOUVELLES_MAX, SEUIL_SANGSUE, REPOS_JOURS,
+    debutDuJour, echeance, nouvelleEntree, estDue, estSuspendue, enRepos, noter, estSangsue,
     motCle, categorie, melanger, choisirSession, choisirDistracteur, choisirImage,
     restantAujourdhui, noteChoix,
   };
