@@ -275,10 +275,12 @@ dialog#fiche::backdrop { background: rgba(0, 0, 0, .45); }
   overscroll-behavior: none;
 }
 #scene { width: 100%; height: 100%; }
+/* La police embarquée d'abord (polices/emoji.css) : une tablette ancienne n'a
+   pas les emoji récents dans sa police système, et la carte restait vide. */
 .glyphe {
   display: block;
   line-height: 1;
-  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-family: "Jeux Emoji", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }
 .scene img { display: block; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
 

@@ -39,7 +39,9 @@ Deux images côte à côte, sans mot. Le parent demande « où est… ? ». L'en
 La note est automatique (juste du premier coup = *su*, au deuxième = *hésitant*,
 deux erreurs = *pas su*). Le distracteur est du même type mais d'une autre
 catégorie (un animal contre un objet, jamais chat contre chien), de préférence une
-carte que l'enfant connaît déjà (boîte 3+). Il ne compte jamais comme révisé.
+carte que l'enfant connaît déjà (boîte 3+). Il ne compte jamais comme révisé. Les
+distracteurs de toute la séance sont tirés au départ, et leurs images résolues
+avec les autres : aucune image n'arrive en retard sur l'écran de l'enfant.
 
 ### Les gestes du parent
 
@@ -143,6 +145,11 @@ dans les deux paquets. Les emoji sont des remplaçants : les photos du parent et
 dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une image).
 `H` (muet en français) et `X` (pas d'emoji xylophone) portent une note. `W` a
 « wapiti », l'un des rares mots français en /w/ (« wagon » se dit /v/).
+
+Les emoji sont dessinés par la police embarquée (`polices/`, voir le README
+à la racine), pas par celle de la tablette : les mêmes images partout. Un emoji
+tapé par le parent dans *Ajouter* n'y est pas et dépend de l'appareil ; après un
+ajout d'emoji dans `graines.js`, relancer `polices/emoji/fabriquer.py`.
 
 ## Données et sauvegarde
 

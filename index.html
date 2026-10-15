@@ -7,6 +7,7 @@
 <title>Jeux</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icones/icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="polices/emoji.css">
 <style>
 /* L'écran de choix du jeu. Il doit rester lisible sur la liseuse e-ink de
    Mot à Mot comme sur la tablette des flashcards : noir sur papier, aplats,
@@ -57,7 +58,9 @@ h1 { margin: 0; font-size: 22px; font-weight: 600; }
 .jeu .dessin {
   font-size: min(18vmin, 150px);
   line-height: 1;
-  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  /* La police embarquée d'abord : la même image sur tous les appareils (voir
+     polices/emoji/fabriquer.py), la police système en secours. */
+  font-family: "Jeux Emoji", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }
 .jeu .lettres { font-family: inherit; font-weight: 700; letter-spacing: .04em; }
 .jeu .nom { font-size: min(5vmin, 32px); font-weight: 700; }

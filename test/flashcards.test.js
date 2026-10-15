@@ -455,6 +455,41 @@ test("rappel de sauvegarde au départ, seulement quand il y a des progrès à pe
   await contexte.close();
 });
 
+test("police emoji embarquée : chargée en COLRv1, et elle couvre chaque emoji des deux jeux", async () => {
+  const Graines = require("../flashcards/graines.js");
+  const { charger } = require("./charger");
+  const emojis = new Set();
+  for (const [e] of Graines.MOTS) emojis.add(e);
+  for (const [, , e] of Graines.LETTRES) emojis.add(e);
+  for (const [, , objets] of Graines.NOMBRES) for (const e of objets) emojis.add(e);
+  for (const n of charger().NOTIONS) emojis.add(n[0]);
+  assert.ok(emojis.size > 150);
+
+  for (const chemin of ["/flashcards/index.html", "/mot-a-mot/index.html", "/"]) {
+    const { page, contexte, erreurs } = await ouvrir(chemin);
+    const r = await page.evaluate(async (liste) => {
+      await document.fonts.load('40px "Jeux Emoji"', liste.join(""));
+      const faces = [...document.fonts].filter((f) => f.family.replace(/"/g, "") === "Jeux Emoji");
+      const plages = faces.flatMap((f) => f.unicodeRange.split(",").map((p) => {
+        const m = p.trim().match(/^U\+([0-9A-F]+)(?:-([0-9A-F]+))?$/i);
+        return [parseInt(m[1], 16), parseInt(m[2] || m[1], 16)];
+      }));
+      const couvert = (cp) => plages.some(([a, b]) => cp >= a && cp <= b);
+      const manquants = [];
+      for (const e of liste) for (const ch of e) {
+        const cp = ch.codePointAt(0);
+        if (cp !== 0xfe0f && !couvert(cp)) manquants.push(e);
+      }
+      return { faces: faces.length, statuts: [...new Set(faces.map((f) => f.status))], manquants };
+    }, [...emojis]);
+    assert.equal(r.faces, 10, chemin + " : dix morceaux de police déclarés");
+    assert.deepEqual(r.statuts, ["loaded"], chemin + " : Chromium charge la police COLRv1");
+    assert.deepEqual(r.manquants, [], chemin + " : emoji hors police");
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  }
+});
+
 test("aucun son : ni voix de synthèse, ni micro, ni enregistrement, nulle part dans le code", () => {
   const interdits = /speechSynthesis|SpeechSynthesisUtterance|AudioContext|MediaRecorder|getUserMedia|<audio|new Audio\(/;
   const fichiers = [];
