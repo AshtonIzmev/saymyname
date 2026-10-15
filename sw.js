@@ -2,7 +2,7 @@
 // démarre sans réseau. Les données et les médias ne passent pas par ici :
 // ils vivent dans IndexedDB (voir flashcards/stockage.js).
 // Changer VERSION à chaque publication pour purger l'ancienne copie.
-const VERSION = "jeux-v5";
+const VERSION = "jeux-v6";
 const COQUILLE = [
   "./",
   "index.html",
@@ -16,6 +16,7 @@ const COQUILLE = [
   "flashcards/app.js",
   "flashcards/planificateur.js",
   "flashcards/graines.js",
+  "flashcards/souffleur.js",
   "flashcards/stockage.js",
   "polices/emoji.css",
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => "polices/emoji/" + n + ".woff2"),

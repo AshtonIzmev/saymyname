@@ -220,6 +220,30 @@
     return h("div", { class: "etiquette" }, motSouligne(c.label));
   }
 
+  // ---------- Le souffleur ----------
+  const CLE_SOUFFLEUR = "flashcards.souffleur";
+  function souffleurActif() { try { return localStorage.getItem(CLE_SOUFFLEUR) !== "0"; } catch (_) { return true; } }
+  function reglerSouffleur(actif) { try { localStorage.setItem(CLE_SOUFFLEUR, actif ? "1" : "0"); } catch (_) {} }
+
+  // En mode choisir, le mot à demander s'affiche toujours : sans lui, le
+  // parent ne sait pas laquelle des deux images est la cible. Le reste
+  // (nouveau / revu, relance, note de la carte) suit le réglage.
+  function rendreSouffleur(c, entree, enChoix) {
+    const el = $("souffleur");
+    el.textContent = "";
+    const s = Souffleur.souffler(c, entree, enChoix ? "choice" : "show");
+    const morceaux = [];
+    if (enChoix) morceaux.push(h("b", null, s.cible));
+    if (souffleurActif() || enChoix) morceaux.push(s.phase);
+    if (souffleurActif()) {
+      // En choisir, le mot et la consigne suffisent : la ligne reste courte.
+      if (s.relance && !enChoix) morceaux.push(s.relance);
+      if (s.note) morceaux.push(s.note);
+    }
+    morceaux.forEach((m, i) => { if (i) el.append(" · "); el.append(m); });
+    el.hidden = morceaux.length === 0;
+  }
+
   function montrerCarte() {
     const c = carteCourante();
     const scene = $("scene");
@@ -228,6 +252,7 @@
     seance.essai = { touchers: 0, trouve: false, auto: null, bloque: false, distracteur: null, cote: 0 };
 
     const distracteur = seance.distracteurs[seance.i] || null;
+    rendreSouffleur(c, entree, !!distracteur);
     if (!distracteur) {
       // Mode montrer (ou pas de distracteur possible pour cette carte).
       scene.className = "scene montrer";
@@ -706,6 +731,7 @@
           h("label", { class: "champ" }, h("span", null, "Prénom"), nom),
           h("label", { class: "champ" }, h("span", null, "Cartes / jour"), cap))));
     }
+    $("souffleur-actif").checked = souffleurActif();
     rendreReserve();
     cochesPaquets($("import-paquets"), "import");
     afficherDerniereSauvegarde();
@@ -912,6 +938,7 @@
     for (const id of ["filtre-type", "filtre-boite", "filtre-source", "filtre-etat"]) $(id).addEventListener("change", rendreCartes);
     $("filtre-texte").addEventListener("input", rendreCartes);
 
+    $("souffleur-actif").addEventListener("change", (ev) => reglerSouffleur(ev.target.checked));
     $("exporter").addEventListener("click", exporterSauvegarde);
     $("importer-sauvegarde").addEventListener("change", (ev) => { importerSauvegarde(ev.target.files[0]); ev.target.value = ""; });
     $("import-dossier").addEventListener("change", (ev) => importer(ev.target.files));

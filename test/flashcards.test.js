@@ -141,6 +141,17 @@ test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le p
   assert.equal(await page.locator("#scene .etiquette").count(), 1);
   const visuel = await page.locator("#scene .visuel").boundingBox();
   assert.ok(visuel.height >= 0.6 * 800, "l'image occupe ~70 % de l'écran : " + visuel.height);
+  // Le souffleur, pour le parent : la carte est nouvelle, on donne le mot.
+  assert.match(await page.textContent("#souffleur"), /Nouveau : dis le mot/);
+  assert.ok(/·/.test(await page.textContent("#souffleur")), "une relance suit");
+  const souffleur = await page.locator("#souffleur").boundingBox();
+  assert.ok(souffleur.y >= visuel.y + visuel.height, "le souffleur est sous l'image");
+  assert.ok(souffleur.y + souffleur.height <= 800, "et dans l'écran");
+  // Éteint dans les réglages : plus rien en mode montrer.
+  await page.evaluate(() => { localStorage.setItem("flashcards.souffleur", "0"); flashcards.rendre(); });
+  assert.equal(await page.isHidden("#souffleur"), true);
+  await page.evaluate(() => { localStorage.removeItem("flashcards.souffleur"); flashcards.rendre(); });
+  assert.equal(await page.isVisible("#souffleur"), true);
 
   // Tap sur l'image : rien ne se passe, ni note ni changement de carte.
   await page.click("#scene .visuel");
@@ -198,6 +209,12 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   await commencerSeance(page, 1, "choice");
   assert.equal(await page.locator("#scene .option").count(), 2);
   assert.equal(await page.evaluate(() => [...document.querySelectorAll("#scene .etiquette")].map((e) => e.textContent).join("")), "");
+  // Le souffleur donne au parent le mot à demander, même souffleur éteint.
+  const cibleAffichee = await page.evaluate(() => [document.querySelector("#souffleur b").textContent, flashcards.carteCourante.label]);
+  assert.equal(cibleAffichee[0], cibleAffichee[1]);
+  await page.evaluate(() => { localStorage.setItem("flashcards.souffleur", "0"); flashcards.rendre(); });
+  assert.match(await page.textContent("#souffleur"), /où est/);
+  await page.evaluate(() => { localStorage.removeItem("flashcards.souffleur"); flashcards.rendre(); });
 
   // Bonne réponse du premier coup.
   let cote = await page.evaluate(() => flashcards.seance.essai.cote);

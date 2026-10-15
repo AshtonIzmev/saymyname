@@ -45,6 +45,21 @@ carte que l'enfant connaît déjà (boîte 3+). Il ne compte jamais comme révis
 distracteurs de toute la séance sont tirés au départ, et leurs images résolues
 avec les autres : aucune image n'arrive en retard sur l'écran de l'enfant.
 
+### Le souffleur
+
+Ce qui enseigne, c'est la voix du parent ; la carte ne fait que choisir le mot.
+Une ligne grise au ras du bas de l'écran, que l'enfant ne lit pas, dit au parent
+la seule chose qu'il ne voit pas : si le mot est **nouveau** (« dis le mot, montre,
+redis-le ») ou **déjà vu** (« demande “c'est quoi ?”, attends trois secondes, puis
+dis-le »). Suit une relance par catégorie, pour en parler plutôt que passer à la
+suivante : le bruit qu'il fait, où on l'a vu, tu aimes ?, montre le tien. La note
+de la carte, s'il y en a une, vient en dernier.
+
+En mode *Choisir*, la ligne commence par **le mot à demander** : sans lui, le
+parent ne saurait pas laquelle des deux images est la cible. Ce mot reste affiché
+même souffleur éteint (*Parent → Réglages → Souffleur*). Les textes sont dans
+`souffleur.js`, testés dans `test/souffleur.test.js`.
+
 ### Les gestes du parent
 
 Invisibles des enfants : aucun bouton sur leur écran. Et hors de leur portée :
@@ -253,5 +268,6 @@ Limites connues, laissées telles quelles pour l'instant :
 - le mode *Choisir* à deux images laisse une chance sur deux au hasard, et le
   distracteur est toujours d'une autre catégorie : trois images et des
   distracteurs plus proches à mesure que la carte monte sont la suite logique ;
-- l'application ne dit rien au parent de ce qu'il pourrait dire (quel son pour
-  une lettre, quelle question) : c'est le README qui le fait, ou personne.
+- le souffleur dit au parent *quand* donner le mot et quand le demander, et une
+  relance par catégorie ; il ne tranche pas, pour une lettre, entre le nom et le
+  son : c'est au parent de choisir, et de s'y tenir.
