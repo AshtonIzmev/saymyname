@@ -47,6 +47,35 @@ test("boîte 5 : trois « su » d'affilée en boîte 4, et un hésitant remet le
   e = P.noter(e, "knew", MIDI); assert.equal(e.box, 5, "la boîte 5 est la dernière");
 });
 
+test("mode choisir : jamais une carte jamais vue, et un « su » ne monte pas au-delà de la boîte 3", () => {
+  // Sélection : la jamais vue attend d'avoir été donnée en montrer.
+  const cartes = indexer([mot("neuve", "a"), mot("vue", "b"), mot("due", "c")]);
+  const entrees = [entree("neuve"), entree("vue", { box: 1, reviews: 1, last_seen_at: MIDI - J }), entree("due", { box: 2, due_at: MIDI - J, reviews: 1 })];
+  assert.deepEqual(P.choisirSession(cartes, entrees, { cap: 10, mode: "choice", maintenant: MIDI, alea: alea(1) }).map((c) => c.id).sort(), ["due", "vue"]);
+  assert.deepEqual(P.choisirSession(cartes, entrees, { cap: 10, maintenant: MIDI, alea: alea(1) }).map((c) => c.id).sort(), ["due", "neuve", "vue"], "en montrer, la neuve est là");
+
+  // Notation : en choisir, su monte jusqu'à la boîte 3, puis reste.
+  let e = P.nouvelleEntree("d", "c", MIDI);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" }); assert.equal(e.box, 2);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" }); assert.equal(e.box, 3);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" });
+  assert.equal(e.box, 3, "plafond du mode choisir");
+  assert.equal(e.due_at, P.debutDuJour(MIDI) + 3 * J, "revue à l'échéance de sa boîte");
+  assert.equal(e.reviews, 3);
+  e = P.noter(e, "knew", MIDI, { mode: "show" }); assert.equal(e.box, 4, "le parent, en montrer, fait passer en connu");
+  // En boîte 4, une réussite en choisir ne compte pas dans la série vers la 5.
+  e = P.noter(e, "knew", MIDI, { mode: "show" }); assert.deepEqual([e.box, e.streak], [4, 1]);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" }); assert.deepEqual([e.box, e.streak], [4, 1]);
+  e = P.noter(e, "knew", MIDI, { mode: "show" });
+  e = P.noter(e, "knew", MIDI, { mode: "show" }); assert.equal(e.box, 5);
+  // Les échecs en choisir comptent comme les autres.
+  e = P.noter(e, "didnt_know", MIDI, { mode: "choice" }); assert.deepEqual([e.box, e.fail_count], [1, 1]);
+  // Une réussite en choisir efface quand même une série d'échecs et un repos.
+  let f = Object.assign(entree("x", { box: 3, reviews: 5, fail_count: 2 }), { rest_until: MIDI + J });
+  f = P.noter(f, "knew", MIDI, { mode: "choice" });
+  assert.deepEqual([f.box, f.fail_count, f.rest_until], [3, 0, null]);
+});
+
 test("sangsue : quatre échecs d'affilée en boîte 1, effacés par un « su »", () => {
   let e = P.nouvelleEntree("d", "c", MIDI);
   for (let i = 0; i < 3; i++) e = P.noter(e, "didnt_know", MIDI);

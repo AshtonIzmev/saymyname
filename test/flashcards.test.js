@@ -204,9 +204,33 @@ test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le p
   await contexte.close();
 });
 
-test("séance « choisir » : deux images sans étiquette, note automatique, fondu de l'autre image", async () => {
+test("séance « choisir » : seulement après « montrer » ; deux images sans étiquette, note automatique, fondu de l'autre image", async () => {
   const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html");
-  await commencerSeance(page, 1, "choice");
+  await page.evaluate(() => { flashcards.config.verrouFini = 300; flashcards.config.attenteErreur = 300; });
+
+  // Paquet neuf : rien n'a été donné en montrer, donc rien à choisir. La
+  // tuile le dit, et n'ouvre pas de séance.
+  await page.locator(".jumeau").nth(1).click();
+  await page.waitForSelector("#vue-mode:not([hidden])");
+  assert.equal(await page.isDisabled("#mode-choisir"), true);
+  assert.match(await page.textContent("#mode-choisir .tuile-sous"), /d'abord Montrer/);
+  await page.click("#mode-choisir", { force: true });
+  assert.equal(await page.isVisible("#vue-mode"), true);
+
+  // Une séance montrer : trois mots donnés, deux hésitants, un pas su.
+  await page.click("#mode-montrer");
+  await page.waitForSelector("#vue-enfant:not([hidden])");
+  const donnes = await page.evaluate(() => flashcards.seance.file.map((c) => c.id));
+  for (const touche of ["ArrowUp", "ArrowUp", "ArrowLeft"]) await page.keyboard.press(touche);
+  await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
+
+  // Maintenant Choisir propose exactement ces trois-là.
+  await page.locator(".jumeau").nth(1).click();
+  assert.equal(await page.isDisabled("#mode-choisir"), false);
+  assert.match(await page.textContent("#mode-choisir .tuile-sous"), /où est/);
+  await page.click("#mode-choisir");
+  await page.waitForSelector("#vue-enfant:not([hidden])");
+  assert.deepEqual((await page.evaluate(() => flashcards.seance.file.map((c) => c.id))).sort(), donnes.slice().sort());
   assert.equal(await page.locator("#scene .option").count(), 2);
   assert.equal(await page.evaluate(() => [...document.querySelectorAll("#scene .etiquette")].map((e) => e.textContent).join("")), "");
   // Le souffleur donne au parent le mot à demander, même souffleur éteint.
@@ -223,6 +247,7 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   assert.notEqual(distracteur.id, cible);
   const categories = await page.evaluate((d) => [Planificateur.categorie(flashcards.carteCourante), Planificateur.categorie(d)], distracteur);
   assert.notEqual(categories[0], categories[1], "jamais deux animaux face à face");
+  const revuesDistracteur = await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id);
   const toucher = await doigt(page);
   await page.locator("#scene .option").nth(cote).tap();
   const apres = await page.evaluate((c) => ({
@@ -238,17 +263,31 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   // Deux erreurs : pas su, et le parent peut forcer « hésitant » par glissement.
   cote = await page.evaluate(() => flashcards.seance.essai.cote);
   const cible2 = await page.evaluate(() => flashcards.carteCourante.id);
-  await page.keyboard.press(String(2 - cote)); // la mauvaise
-  await page.keyboard.press(String(2 - cote)); // ignorée : silence d'une seconde
+  // La mauvaise, deux fois de suite : la seconde est ignorée (silence d'une
+  // seconde en vrai, 300 ms ici). Les deux touchers dans le même tour pour
+  // que le test ne dépende pas de la vitesse de la machine.
+  await page.evaluate((i) => { flashcards.toucherOption(i); flashcards.toucherOption(i); }, 1 - cote);
   assert.equal(await page.evaluate(() => flashcards.seance.essai.touchers), 1);
-  await page.waitForTimeout(1100);
+  await page.waitForTimeout(600);
   await page.keyboard.press(String(2 - cote));
   assert.equal(await page.evaluate(() => flashcards.seance.essai.auto), "didnt_know");
   await toucher.deuxDoigts.glisser(0, -250);
   r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible2);
   assert.deepEqual([r.grade, r.touches], ["hesitant", 2]);
   // La révision ne compte que pour la cible, jamais pour le distracteur.
-  assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id), 0);
+  assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id), revuesDistracteur);
+
+  // Le tableau de bord ne compte pas une réussite en choisir comme un mot dit.
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
+  await page.click("#ouvrir-parent");
+  await page.click("[data-onglet='tableau']");
+  const dits = await page.$eval(".carte-stats[data-deck='deck-2'] dl", (dl) => {
+    const dts = [...dl.querySelectorAll("dt")];
+    const i = dts.findIndex((d) => /mots dits/.test(d.textContent));
+    return dl.querySelectorAll("dd")[i].textContent;
+  });
+  assert.equal(dits, "0");
   assert.deepEqual(erreurs, []);
   await contexte.close();
 });

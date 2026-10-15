@@ -137,6 +137,7 @@ code { background: var(--doux); padding: 0 4px; border-radius: 3px; }
   color: var(--encre);
   cursor: pointer;
 }
+.tuile-mode:disabled { opacity: .35; cursor: default; }
 .tuile-titre { font-size: 32px; font-weight: 700; }
 .tuile-sous { color: var(--discret); }
 

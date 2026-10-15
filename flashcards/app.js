@@ -148,11 +148,18 @@
     const d = S.etat.decks[paquetChoisi];
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, Date.now());
     const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi });
+    const enChoix = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, mode: "choice" });
     $("mode-info").textContent = restant === 0
       ? "Plafond du jour atteint (" + d.daily_cap + " cartes)."
       : file.length === 0
         ? "Rien à montrer aujourd'hui : tout est vu, suspendu ou au repos."
         : file.length + " carte" + (file.length > 1 ? "s" : "") + " pour cette séance.";
+    // Choisir ne demande que ce qui a déjà été donné en montrer : tant qu'il
+    // n'y a rien de tel, la tuile le dit et ne fait rien.
+    const choisir = $("mode-choisir");
+    const rienAChoisir = restant > 0 && enChoix.length === 0;
+    choisir.disabled = rienAChoisir;
+    choisir.querySelector(".tuile-sous").textContent = rienAChoisir ? "d'abord Montrer" : "« où est… ? »";
     for (const b of $("filtre").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.filtre === filtreChoisi));
   }
 
@@ -168,7 +175,7 @@
     const d = S.etat.decks[paquetChoisi];
     const maintenant = Date.now();
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, maintenant);
-    const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, maintenant });
+    const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, mode, maintenant });
     // Rien à montrer : on le dit et on reste là. Pas de « fini » verrouillé
     // trente secondes pour un appui de trop sur une tuile.
     if (file.length === 0) { rendreInfoMode(); return; }
@@ -299,7 +306,7 @@
     const e = seance.essai;
     const maintenant = Date.now();
     const avant = S.entree(seance.deck, c.id) || P.nouvelleEntree(seance.deck, c.id, maintenant);
-    S.enregistrerEntree(P.noter(avant, note, maintenant));
+    S.enregistrerEntree(P.noter(avant, note, maintenant, { mode: seance.mode }));
     S.ajouterRevue({
       id: S.nouvelId(), session_id: seance.id, deck_id: seance.deck, card_id: c.id, grade: note,
       mode: e && e.distracteur ? "choice" : "show",
@@ -656,8 +663,10 @@
     const boites = [0, 0, 0, 0, 0];
     for (const e of entrees) boites[e.box - 1]++;
     const revues = revuesListe().filter((r) => r.deck_id === deckId);
+    // Un mot « dit » : le premier « su » noté par le parent en montrer. Une
+    // réussite en choisir n'en est pas un (une chance sur deux au hasard).
     const premierSu = {};
-    for (const r of revues) if (r.grade === "knew" && (!premierSu[r.card_id] || r.at < premierSu[r.card_id])) premierSu[r.card_id] = r.at;
+    for (const r of revues) if (r.grade === "knew" && r.mode === "show" && (!premierSu[r.card_id] || r.at < premierSu[r.card_id])) premierSu[r.card_id] = r.at;
     const seances = Object.values(S.etat.sessions).filter((s) => s.deck_id === deckId && s.started_at >= semaine && s.ended_at);
     const duree = seances.length ? seances.reduce((t, s) => t + (s.ended_at - s.started_at), 0) / seances.length : 0;
     return {
@@ -685,7 +694,7 @@
         h("div", { class: "boites" }, s.boites.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, "boîte " + (i + 1))))),
         h("dl", { class: "chiffres" },
           h("dt", null, "Boîtes 4–5 (connues)"), h("dd", null, String(s.connues)),
-          h("dt", null, "Nouveaux mots reconnus (7 j)"), h("dd", null, String(s.nouveauxMots)),
+          h("dt", null, "Nouveaux mots dits (7 j)"), h("dd", null, String(s.nouveauxMots)),
           h("dt", null, "Jamais montrées"), h("dd", null, String(s.jamais)),
           h("dt", null, "Séances (7 j)"), h("dd", null, String(s.seances)),
           h("dt", null, "Durée moyenne"), h("dd", null, minutes),

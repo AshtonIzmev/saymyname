@@ -33,7 +33,8 @@ La carte ne change jamais toute seule.
 
 ### Choisir (réceptif)
 
-Deux images côte à côte, sans mot. Le parent demande « où est… ? ». L'enfant touche :
+Deux images côte à côte, sans mot. Le parent demande « où est… ? » (le souffleur
+lui donne le mot). L'enfant touche :
 
 - **juste** : l'autre image s'efface, le mot apparaît sous la cible ;
 - **faux** : rien pendant une seconde, puis il peut réessayer.
@@ -44,6 +45,20 @@ catégorie (un animal contre un objet, jamais chat contre chien), de préférenc
 carte que l'enfant connaît déjà (boîte 3+). Il ne compte jamais comme révisé. Les
 distracteurs de toute la séance sont tirés au départ, et leurs images résolues
 avec les autres : aucune image n'arrive en retard sur l'écran de l'enfant.
+
+*Choisir* vient **après** *Montrer*, et ne décide pas qu'un mot est connu :
+
+- il ne propose que des cartes déjà vues au moins une fois : un mot est d'abord
+  donné par une voix avant d'être demandé. Sur un paquet neuf, la tuile est grisée
+  (« d'abord Montrer ») ;
+- une réussite en *Choisir* fait monter une carte jusqu'à la boîte 3, pas au-delà.
+  Deux images, c'est une chance sur deux au hasard, et un enfant qui sait que
+  l'autre image n'est pas « chien » réussit par exclusion. *Connu* (boîtes 4 et 5)
+  reste une note du parent, en *Montrer*. Les échecs, eux, comptent comme les
+  autres : deux erreurs sur deux images, c'est un signal.
+
+Ce que *Choisir* mesure, c'est de la compréhension ; traitez-le comme un jeu, et le
+tableau de bord comme le reflet de *Montrer*.
 
 ### Le souffleur
 
@@ -94,8 +109,9 @@ Tout se fait sur la tablette : elle a l'appareil photo.
   indéfiniment, pour les deux enfants), **reposer un mois pour un seul enfant**
   (ou le réveiller), historique des révisions.
 - **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
-  reconnus en 7 jours, jamais montrées, séances, durée moyenne, fin par plafond ou
-  par le parent, cartes en échec 3 fois de suite.
+  dits en 7 jours (premier *su* en *Montrer* ; une réussite en *Choisir* n'en est pas
+  un), jamais montrées, séances, durée moyenne, fin par plafond ou par le parent,
+  cartes en échec 3 fois de suite.
 - **Réglages** : prénom, photo et plafond de chaque enfant ; **en réserve** (voir
   *Jeu de départ*) ; **sauvegarde** (exporter, importer) ; images en masse.
 
@@ -131,6 +147,10 @@ Les nouvelles passent avant les ratées, pas l'inverse : une ratée revient de
 toute façon à chaque séance, tandis qu'un enfant qui rate beaucoup ne verrait
 sinon plus jamais rien de nouveau et tournerait sur les mêmes dix cartes pendant
 des mois. Un paquet tout neuf ouvre donc sur trois mots, pas sur A, B, C.
+
+En mode *Choisir*, la sélection écarte les cartes jamais vues et un *su* ne fait
+pas monter au-delà de la boîte 3 (`PLAFOND_CHOIX`) : à ce plafond, la carte reste
+dans sa boîte et sera revue à son échéance ; la série vers la boîte 5 ne bouge pas.
 
 Une carte *su* trois fois de suite en boîte 4 passe en boîte 5. Une carte ratée 4
 fois de suite en boîte 1 est **signalée** et **se repose une semaine** : on ne
@@ -246,7 +266,9 @@ copie locale sert au bout de 3 secondes.
 - **Mots avant lettres** à date d'ajout égale, pour qu'un paquet neuf n'ouvre
   pas sur l'alphabet.
 - **Glisser ↓** en mode *Choisir* : il fallait un geste pour « passer en gardant
-  la note automatique » ; les trois autres directions la remplacent.
+  la note automatique » ; les trois autres directions la remplacent. Un glissement
+  du parent en *Choisir* reste une note de *Choisir* : plafonnée à la boîte 3, même
+  si c'est lui qui a jugé. Pour faire passer un mot en *connu*, c'est *Montrer*.
 - **Boîte 5 due** (après 21 jours) : revue après les boîtes 2–4, pour ne pas
   disparaître pour toujours.
 - **Série vers la boîte 5** : `streak` compte les *su* d'affilée dans la boîte
