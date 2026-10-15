@@ -258,5 +258,4 @@ test("jeu de départ : identifiants uniques, minuscules, 26 lettres, chiffres 1 
   }
   assert.deepEqual(cartes.filter((c) => c.type === "number").map((c) => c.extras.digit), [1, 2, 3, 4, 5]);
   for (const c of cartes.filter((x) => x.type === "number")) assert.ok(c.images.length >= 3, "objets variés : " + c.id);
-  assert.equal(Graines.paquetsDeDepart().length, 2);
 });

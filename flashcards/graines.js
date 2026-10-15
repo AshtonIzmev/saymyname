@@ -1,5 +1,5 @@
 // ==========================================================================
-// JEU DE DÉPART. Semé une fois, dans les deux paquets, avec des emoji en
+// JEU DE DÉPART. Semé une fois, puis donné à chaque enfant ajouté, en emoji en
 // attendant les photos du parent et les dessins MultiPic / BOSS.
 // Identifiants déterministes (« word-chien », « letter-B ») : stables d'un
 // appareil à l'autre, lisibles dans une sauvegarde.
@@ -217,12 +217,5 @@
     return cartes;
   }
 
-  function paquetsDeDepart() {
-    return [
-      { id: "deck-1", name: "Jumeau 1", photo: null, daily_cap: 10, updated_at: 0 },
-      { id: "deck-2", name: "Jumeau 2", photo: null, daily_cap: 10, updated_at: 0 },
-    ];
-  }
-
-  return { CATEGORIES, SOURCES, MOTS, LETTRES, NOMBRES, cartesDeDepart, paquetsDeDepart, idDe };
+  return { CATEGORIES, SOURCES, MOTS, LETTRES, NOMBRES, cartesDeDepart, idDe };
 });

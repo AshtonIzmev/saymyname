@@ -1,7 +1,7 @@
 // ==========================================================================
-// INTERFACE. Départ (choisir l'enfant, le mode), écran de l'enfant (montrer,
-// choisir), écran « fini », et côté parent (ajouter, cartes, tableau,
-// réglages). L'état vit dans Stockage, sur l'appareil ; la planification dans
+// INTERFACE. Départ (l'enfant actif, le mode), les enfants (ajouter, choisir
+// l'actif), écran de l'enfant (montrer, choisir), écran « fini », et côté
+// parent (ajouter, cartes, tableau, réglages). L'état vit dans Stockage, sur l'appareil ; la planification dans
 // Planificateur. Pas de serveur : on passe d'un appareil à l'autre par une
 // sauvegarde exportée puis importée.
 // ==========================================================================
@@ -44,7 +44,8 @@
     if (valeur != null) select.value = valeur;
   }
 
-  function paquets() { return Object.values(S.etat.decks).sort((a, b) => (a.id < b.id ? -1 : 1)); }
+  // Dans l'ordre d'ajout : « deck-2 » avant « deck-10 ».
+  function paquets() { return Object.values(S.etat.decks).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true })); }
   function carte(id) { return S.etat.cards[id]; }
 
   function afficherVue(id) {
@@ -97,8 +98,20 @@
   // DÉPART ET MODE
   // ======================================================================
 
-  let paquetChoisi = null;
   let filtreChoisi = "tout";
+
+  // L'enfant actif : celui dont la séance part du départ. Retenu sur cet
+  // appareil ; à défaut (premier lancement, enfant retiré, sauvegarde
+  // importée), le premier des enfants.
+  const CLE_ACTIF = "flashcards.enfantActif";
+  function actif() {
+    let id = null;
+    try { id = localStorage.getItem(CLE_ACTIF); } catch (_) {}
+    return (id && S.etat.decks[id]) || paquets()[0] || null;
+  }
+  function choisirActif(id) {
+    try { localStorage.setItem(CLE_ACTIF, id); } catch (_) {}
+  }
 
   function portrait(paquet) {
     const p = h("span", { class: "portrait" });
@@ -111,25 +124,31 @@
   }
 
   function rendreDepart() {
-    const zone = $("jumeaux");
+    const zone = $("enfant-actif");
     zone.textContent = "";
-    for (const d of paquets())
-      zone.append(h("button", { type: "button", class: "jumeau", "data-deck": d.id, onclick: () => choisirPaquet(d.id) },
-        portrait(d), d.name));
+    const d = actif();
+    if (d) {
+      zone.dataset.deck = d.id;
+      zone.append(portrait(d), h("span", { class: "prenom" }, d.name),
+        h("button", { type: "button", class: "bouton secondaire", id: "changer-enfant", onclick: () => ouvrirEnfants("depart") },
+          paquets().length > 1 ? "Changer d'enfant" : "Enfants"));
+      rendreInfoMode();
+    }
     afficherRappelSauvegarde();
+  }
+
+  // Le départ, ou l'écran des enfants tant qu'il n'y en a aucun.
+  function allerDepart() {
+    if (!actif()) { ouvrirEnfants("depart"); return; }
+    rendreDepart();
+    afficherVue("vue-depart");
   }
 
   function revuesListe() { return Object.values(S.etat.reviews); }
 
-  function choisirPaquet(id) {
-    paquetChoisi = id;
-    $("mode-titre").textContent = S.etat.decks[id].name;
-    rendreInfoMode();
-    afficherVue("vue-mode");
-  }
-
   function rendreInfoMode() {
-    const d = S.etat.decks[paquetChoisi];
+    const d = actif();
+    if (!d) return;
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, Date.now());
     const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi });
     $("mode-info").textContent = restant === 0
@@ -141,6 +160,99 @@
   }
 
   // ======================================================================
+  // LES ENFANTS : AJOUTER, RÉGLER, CHOISIR L'ACTIF
+  // ======================================================================
+
+  let retourEnfants = "depart"; // d'où l'on vient : « depart » ou « parent »
+
+  function ouvrirEnfants(depuis) {
+    retourEnfants = depuis || "depart";
+    message($("enfants-message"), "");
+    rendreEnfants();
+    afficherVue("vue-enfants");
+  }
+
+  function fermerEnfants() {
+    if (retourEnfants === "parent") {
+      cochesPaquets($("ajout-paquets"), "ajout");
+      afficherVue("vue-parent");
+      ouvrirOnglet("reglages");
+    }
+    else allerDepart();
+  }
+
+  function rendreEnfants() {
+    const liste = paquets();
+    const courant = actif();
+    $("enfants-intro").textContent = liste.length
+      ? "L'enfant actif est celui qui joue : la séance part de lui. Chacun a son paquet, ses boîtes et ses progrès."
+      : "Qui va jouer ? Ajouter un premier enfant : chaque enfant reçoit toutes les cartes, en boîte 1. " +
+        "Une sauvegarde à reprendre ? Parent → Réglages → Importer.";
+    // Sans enfant, pas de départ où revenir : seul le côté parent reste ouvert.
+    const sansDepart = !liste.length && retourEnfants !== "parent";
+    $("enfants-retour").hidden = sansDepart;
+    $("enfants-jeux").hidden = !sansDepart;
+    $("enfants-parent").hidden = !sansDepart;
+    const zone = $("liste-enfants");
+    zone.textContent = "";
+    for (const p of liste) {
+      const estActif = courant && courant.id === p.id;
+      const nom = h("input", { type: "text", value: p.name, maxlength: "40", "aria-label": "Prénom" });
+      const cap = h("input", { type: "number", min: String(P.PLAFOND_MIN), max: String(P.PLAFOND_MAX), value: String(p.daily_cap), "aria-label": "Cartes par jour" });
+      const sauver = () => {
+        const n = Math.max(P.PLAFOND_MIN, Math.min(P.PLAFOND_MAX, Number(cap.value) || P.PLAFOND_DEFAUT));
+        cap.value = String(n);
+        S.enregistrerPaquet(Object.assign({}, S.etat.decks[p.id], { name: nom.value.trim() || p.name, daily_cap: n }));
+        nom.value = S.etat.decks[p.id].name;
+        remplirFiltres();
+      };
+      nom.addEventListener("change", sauver);
+      cap.addEventListener("change", sauver);
+      const photo = h("label", { class: "portrait", title: "Photo" }, portrait(p).firstChild,
+        h("input", { type: "file", accept: "image/*", hidden: true, onchange: async (ev) => {
+          const f = ev.target.files[0];
+          if (!f) return;
+          const media = await S.ajouterMedia(await recadrerCarre(f, 512));
+          S.enregistrerPaquet(Object.assign({}, S.etat.decks[p.id], { photo: media }));
+          rendreEnfants();
+        } }));
+      zone.append(h("div", { class: "paquet-reglage" + (estActif ? " actif" : ""), "data-deck": p.id }, photo,
+        h("div", { class: "champs" },
+          h("label", { class: "champ" }, h("span", null, "Prénom"), nom),
+          h("label", { class: "champ" }, h("span", null, "Cartes / jour"), cap)),
+        h("div", { class: "actions" },
+          h("button", { type: "button", class: "bouton" + (estActif ? " principal" : ""), "data-choisir": p.id, "aria-pressed": String(!!estActif),
+            onclick: () => { choisirActif(p.id); rendreEnfants(); } }, estActif ? "✓ Actif" : "Choisir"),
+          h("button", { type: "button", class: "bouton danger", "data-retirer": p.id, onclick: () => retirerEnfant(p.id) }, "Retirer"))));
+    }
+  }
+
+  function ajouterEnfant(ev) {
+    ev.preventDefault();
+    const champ = $("nouvel-enfant");
+    const nom = champ.value.trim();
+    if (!nom) { message($("enfants-message"), "Il manque le prénom.", true); champ.focus(); return; }
+    const premier = !actif();
+    const p = S.ajouterPaquet(nom);
+    // Le premier enfant est actif d'office ; les suivants, quand on les choisit.
+    if (premier) choisirActif(p.id);
+    champ.value = "";
+    message($("enfants-message"), nom + " a son paquet : toutes les cartes, en boîte 1." + (premier ? "" : " « Choisir » pour lancer ses séances."));
+    rendreEnfants();
+    remplirFiltres();
+  }
+
+  async function retirerEnfant(id) {
+    const p = S.etat.decks[id];
+    if (!p) return;
+    if (!confirm("Retirer " + p.name + " ? Ses progrès (boîtes, séances, révisions) et sa photo seront effacés de cet appareil. Les cartes restent.")) return;
+    await S.retirerPaquet(id);
+    message($("enfants-message"), "Le paquet de " + p.name + " est effacé.");
+    rendreEnfants();
+    remplirFiltres();
+  }
+
+  // ======================================================================
   // SÉANCE
   // ======================================================================
 
@@ -149,7 +261,8 @@
   let reveil = null;
 
   async function demarrer(mode) {
-    const d = S.etat.decks[paquetChoisi];
+    const d = actif();
+    if (!d) return;
     const maintenant = Date.now();
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, maintenant);
     const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, maintenant });
@@ -294,8 +407,7 @@
     clearTimeout(verrou);
     verrou = setTimeout(() => {
       verrou = null;
-      rendreDepart();
-      afficherVue("vue-depart");
+      allerDepart();
     }, CONFIG.verrouFini);
   }
 
@@ -417,7 +529,8 @@
     const decks = paquetsCoches($("ajout-paquets"));
     if (type !== "number" && !mot) { message(msg, "Il manque le mot.", true); return; }
     if (!ajout.blob && !ajout.emoji) { message(msg, "Il manque une photo ou un emoji.", true); return; }
-    if (!decks.length) { message(msg, "Choisir au moins un paquet.", true); return; }
+    // Sans enfant encore, la carte attend : chaque enfant ajouté la recevra.
+    if (!decks.length && paquets().length) { message(msg, "Choisir au moins un paquet.", true); return; }
 
     const id = S.nouvelId();
     const images = [];
@@ -664,32 +777,6 @@
   // ======================================================================
 
   function rendreReglages() {
-    const zone = $("reglages-paquets");
-    zone.textContent = "";
-    for (const p of paquets()) {
-      const nom = h("input", { type: "text", value: p.name, "aria-label": "Prénom" });
-      const cap = h("input", { type: "number", min: String(P.PLAFOND_MIN), max: String(P.PLAFOND_MAX), value: String(p.daily_cap), "aria-label": "Cartes par jour" });
-      const sauver = () => {
-        const n = Math.max(P.PLAFOND_MIN, Math.min(P.PLAFOND_MAX, Number(cap.value) || P.PLAFOND_DEFAUT));
-        cap.value = String(n);
-        S.enregistrerPaquet(Object.assign({}, S.etat.decks[p.id], { name: nom.value.trim() || p.name, daily_cap: n }));
-        rendreDepart(); remplirFiltres();
-          };
-      nom.addEventListener("change", sauver);
-      cap.addEventListener("change", sauver);
-      const photo = h("label", { class: "portrait", title: "Photo" }, portrait(p).firstChild,
-        h("input", { type: "file", accept: "image/*", hidden: true, onchange: async (ev) => {
-          const f = ev.target.files[0];
-          if (!f) return;
-          const media = await S.ajouterMedia(await recadrerCarre(f, 512));
-          S.enregistrerPaquet(Object.assign({}, S.etat.decks[p.id], { photo: media }));
-          rendreReglages(); rendreDepart();
-              } }));
-      zone.append(h("div", { class: "paquet-reglage", "data-deck": p.id }, photo,
-        h("div", { class: "champs" },
-          h("label", { class: "champ" }, h("span", null, "Prénom"), nom),
-          h("label", { class: "champ" }, h("span", null, "Cartes / jour"), cap))));
-    }
     cochesPaquets($("import-paquets"), "import");
     afficherDerniereSauvegarde();
   }
@@ -761,7 +848,6 @@
       const quand = r.exporte_le ? " du " + new Date(r.exporte_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
       message(msg, "Sauvegarde" + quand + " importée : " + r.cartes + " cartes, " + r.revues + " révisions, " + r.medias + " photos.");
       remplirFiltres();
-      rendreDepart();
       rendreReglages();
     } catch (e) {
       message(msg, e.message, true);
@@ -774,7 +860,7 @@
     const images = [...fichiers].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name));
     if (!images.length) { message(msg, "Aucune image trouvée.", true); return; }
     const decks = paquetsCoches($("import-paquets"));
-    if (!decks.length) { message(msg, "Choisir au moins un paquet.", true); return; }
+    if (!decks.length && paquets().length) { message(msg, "Choisir au moins un paquet.", true); return; }
     const source = $("import-source").value, categorie = $("import-categorie").value;
     const groupes = new Map();
     for (const f of images) {
@@ -827,14 +913,16 @@
 
   function fermerParent() {
     history.replaceState(null, "", location.pathname + location.search);
-    rendreDepart();
-    afficherVue("vue-depart");
+    allerDepart();
   }
 
   function brancher() {
     $("ouvrir-parent").addEventListener("click", ouvrirParent);
     $("parent-fermer").addEventListener("click", fermerParent);
-    $("mode-retour").addEventListener("click", () => afficherVue("vue-depart"));
+    $("enfants-retour").addEventListener("click", fermerEnfants);
+    $("ajout-enfant").addEventListener("submit", ajouterEnfant);
+    $("reglages-enfants").addEventListener("click", () => ouvrirEnfants("parent"));
+    $("enfants-parent").addEventListener("click", ouvrirParent);
     for (const b of $("filtre").querySelectorAll("button"))
       b.addEventListener("click", () => { filtreChoisi = b.dataset.filtre; rendreInfoMode(); });
     $("mode-montrer").addEventListener("click", () => demarrer("show"));
@@ -889,9 +977,8 @@
     brancher();
     choisirTypeAjout("word");
     reinitialiserAjout();
-    rendreDepart();
     if (location.hash === "#parent") ouvrirParent();
-    else afficherVue("vue-depart");
+    else allerDepart();
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
       navigator.serviceWorker.register("../sw.js").catch(() => {});
     window.flashcards.pret = true;
@@ -902,6 +989,7 @@
     config: CONFIG,
     get seance() { return seance; },
     get carteCourante() { return carteCourante(); },
+    get enfantActif() { const d = actif(); return d && d.id; },
     noter: noterEtAvancer,
     rendre: () => montrerCarte(),
     toucherOption,
