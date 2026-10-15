@@ -196,6 +196,38 @@ test("critère 7 bis : le même geste au doigt (tactile)", async () => {
   await contexte.close();
 });
 
+test("temps mort : deux tapes au doigt coup sur coup ne font qu'un pas ; la barre et le clavier n'attendent pas", async () => {
+  const { page, contexte } = await ouvrir();
+  await page.evaluate(() => { motAMot.config.attenteEntreNavigations = 600; });
+  const e0 = await idsAffiches(page);
+  await page.tap("#coin-1");
+  const e1 = await idsAffiches(page);
+  assert.equal(e1.centre, e0.coins[0], "la première tape navigue");
+  await page.tap("#coin-2");
+  await page.tap("#coin-3");
+  assert.deepEqual(await idsAffiches(page), e1, "les suivantes, dans le temps mort, ne font rien");
+  assert.equal(await page.evaluate(() => document.getElementById("coin-2").classList.contains("presse")), false, "et ne laissent pas le cercle inversé");
+  // Le parent, lui, n'attend pas : bouton et clavier passent tout de suite.
+  await page.keyboard.press("4");
+  const e2 = await idsAffiches(page);
+  assert.equal(e2.centre, e1.coins[3]);
+  await page.click("#bouton-retour");
+  assert.deepEqual(await idsAffiches(page), e1);
+  // Le temps mort passé, le doigt navigue de nouveau.
+  await page.waitForTimeout(700);
+  await page.tap("#coin-2");
+  assert.equal((await idsAffiches(page)).centre, e1.coins[1]);
+  // Désactivé : chaque tape compte.
+  await page.evaluate(() => { motAMot.config.attenteEntreNavigations = 0; });
+  const e3 = await idsAffiches(page);
+  const pas = await page.evaluate(() => motAMot.historique.length);
+  await page.tap("#coin-1");
+  await page.tap("#coin-1");
+  assert.equal(await page.evaluate(() => motAMot.historique.length), pas + 2, "deux pas, pas un");
+  assert.notEqual((await idsAffiches(page)).centre, e3.coins[0]);
+  await contexte.close();
+});
+
 test("critère 8 : taper le centre ne produit rien", async () => {
   const { page, contexte } = await ouvrir();
   const avant = await idsAffiches(page);

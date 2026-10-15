@@ -270,6 +270,17 @@ test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le p
   assert.equal(await page.locator("#scene .etiquette").count(), 1);
   const visuel = await page.locator("#scene .visuel").boundingBox();
   assert.ok(visuel.height >= 0.6 * 800, "l'image occupe ~70 % de l'écran : " + visuel.height);
+  // Le souffleur, pour le parent : la carte est nouvelle, on donne le mot.
+  assert.match(await page.textContent("#souffleur"), /Nouveau : dis le mot/);
+  assert.ok(/·/.test(await page.textContent("#souffleur")), "une relance suit");
+  const souffleur = await page.locator("#souffleur").boundingBox();
+  assert.ok(souffleur.y >= visuel.y + visuel.height, "le souffleur est sous l'image");
+  assert.ok(souffleur.y + souffleur.height <= 800, "et dans l'écran");
+  // Éteint dans les réglages : plus rien en mode montrer.
+  await page.evaluate(() => { localStorage.setItem("flashcards.souffleur", "0"); flashcards.rendre(); });
+  assert.equal(await page.isHidden("#souffleur"), true);
+  await page.evaluate(() => { localStorage.removeItem("flashcards.souffleur"); flashcards.rendre(); });
+  assert.equal(await page.isVisible("#souffleur"), true);
 
   // Tap sur l'image : rien ne se passe, ni note ni changement de carte.
   await page.click("#scene .visuel");
@@ -322,11 +333,39 @@ test("séance « montrer » : écran nu, l'enfant à un doigt ne note rien, le p
   await contexte.close();
 });
 
-test("séance « choisir » : deux images sans étiquette, note automatique, fondu de l'autre image", async () => {
+test("séance « choisir » : seulement après « montrer » ; deux images sans étiquette, note automatique, fondu de l'autre image", async () => {
   const { page, contexte, erreurs } = await ouvrirAvecEnfants("/flashcards/index.html");
-  await commencerSeance(page, 1, "choice");
+  await page.evaluate(() => { flashcards.config.verrouFini = 300; flashcards.config.attenteErreur = 300; });
+
+  // Paquet neuf : rien n'a été donné en montrer, donc rien à choisir. La
+  // tuile le dit, et n'ouvre pas de séance.
+  await choisirEnfant(page, 1);
+  assert.equal(await page.isDisabled("#mode-choisir"), true);
+  assert.match(await page.textContent("#mode-choisir .tuile-sous"), /d'abord Montrer/);
+  await page.click("#mode-choisir", { force: true });
+  assert.equal(await page.isVisible("#vue-depart"), true);
+
+  // Une séance montrer : trois mots donnés, deux hésitants, un pas su.
+  await page.click("#mode-montrer");
+  await page.waitForSelector("#vue-enfant:not([hidden])");
+  const donnes = await page.evaluate(() => flashcards.seance.file.map((c) => c.id));
+  for (const touche of ["ArrowUp", "ArrowUp", "ArrowLeft"]) await page.keyboard.press(touche);
+  await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
+
+  // Maintenant Choisir propose exactement ces trois-là.
+  assert.equal(await page.isDisabled("#mode-choisir"), false);
+  assert.match(await page.textContent("#mode-choisir .tuile-sous"), /où est/);
+  await page.click("#mode-choisir");
+  await page.waitForSelector("#vue-enfant:not([hidden])");
+  assert.deepEqual((await page.evaluate(() => flashcards.seance.file.map((c) => c.id))).sort(), donnes.slice().sort());
   assert.equal(await page.locator("#scene .option").count(), 2);
   assert.equal(await page.evaluate(() => [...document.querySelectorAll("#scene .etiquette")].map((e) => e.textContent).join("")), "");
+  // Le souffleur donne au parent le mot à demander, même souffleur éteint.
+  const cibleAffichee = await page.evaluate(() => [document.querySelector("#souffleur b").textContent, flashcards.carteCourante.label]);
+  assert.equal(cibleAffichee[0], cibleAffichee[1]);
+  await page.evaluate(() => { localStorage.setItem("flashcards.souffleur", "0"); flashcards.rendre(); });
+  assert.match(await page.textContent("#souffleur"), /où est/);
+  await page.evaluate(() => { localStorage.removeItem("flashcards.souffleur"); flashcards.rendre(); });
 
   // Bonne réponse du premier coup.
   let cote = await page.evaluate(() => flashcards.seance.essai.cote);
@@ -335,6 +374,7 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   assert.notEqual(distracteur.id, cible);
   const categories = await page.evaluate((d) => [Planificateur.categorie(flashcards.carteCourante), Planificateur.categorie(d)], distracteur);
   assert.notEqual(categories[0], categories[1], "jamais deux animaux face à face");
+  const revuesDistracteur = await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id);
   const toucher = await doigt(page);
   await page.locator("#scene .option").nth(cote).tap();
   const apres = await page.evaluate((c) => ({
@@ -346,21 +386,37 @@ test("séance « choisir » : deux images sans étiquette, note automatique, fon
   await toucher.deuxDoigts.glisser(0, 250); // ↓ : on garde la note automatique
   let r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible);
   assert.deepEqual([r.grade, r.touches, r.mode, r.distractor_card_id], ["knew", 1, "choice", distracteur.id]);
+  // La révision ne compte que pour la cible, jamais pour le distracteur
+  // (vérifié maintenant : il peut être la cible d'une carte suivante).
+  assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id), revuesDistracteur);
 
   // Deux erreurs : pas su, et le parent peut forcer « hésitant » par glissement.
   cote = await page.evaluate(() => flashcards.seance.essai.cote);
   const cible2 = await page.evaluate(() => flashcards.carteCourante.id);
-  await page.keyboard.press(String(2 - cote)); // la mauvaise
-  await page.keyboard.press(String(2 - cote)); // ignorée : silence d'une seconde
+  // La mauvaise, deux fois de suite : la seconde est ignorée (silence d'une
+  // seconde en vrai, 300 ms ici). Les deux touchers dans le même tour pour
+  // que le test ne dépende pas de la vitesse de la machine.
+  await page.evaluate((i) => { flashcards.toucherOption(i); flashcards.toucherOption(i); }, 1 - cote);
   assert.equal(await page.evaluate(() => flashcards.seance.essai.touchers), 1);
-  await page.waitForTimeout(1100);
+  await page.waitForTimeout(600);
   await page.keyboard.press(String(2 - cote));
   assert.equal(await page.evaluate(() => flashcards.seance.essai.auto), "didnt_know");
   await toucher.deuxDoigts.glisser(0, -250);
   r = await page.evaluate((id) => Object.values(Stockage.etat.reviews).find((x) => x.card_id === id && x.session_id === flashcards.seance.id), cible2);
   assert.deepEqual([r.grade, r.touches], ["hesitant", 2]);
-  // La révision ne compte que pour la cible, jamais pour le distracteur.
-  assert.equal(await page.evaluate((id) => Stockage.entree("deck-2", id).reviews, distracteur.id), 0);
+
+  // Le tableau de bord ne compte pas une réussite en choisir comme un mot dit.
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("#vue-depart:not([hidden])", { timeout: 4000 });
+  await page.click("#ouvrir-parent");
+  await page.click("[data-onglet='tableau']");
+  await page.click("#tableau-enfant button[data-deck='deck-2']");
+  const dits = await page.$eval(".carte-stats[data-deck='deck-2'] dl", (dl) => {
+    const dts = [...dl.querySelectorAll("dt")];
+    const i = dts.findIndex((d) => /mots dits/.test(d.textContent));
+    return dl.querySelectorAll("dd")[i].textContent;
+  });
+  assert.equal(dits, "0");
   assert.deepEqual(erreurs, []);
   await contexte.close();
 });
@@ -433,10 +489,68 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
   }, tonton.images[0].media);
   assert.deepEqual(recadree, ["image/webp", 30, 30]);
 
-  // Tableau de bord : les deux enfants côte à côte.
+  // La réserve : les lettres dorment, un bouton les réveille, un autre les y remet.
+  assert.deepEqual(await page.$$eval("#reserve .groupe", (gs) => gs.map((g) => g.dataset.groupe)), ["lettres", "couleurs", "formes", "grands-nombres"]);
+  assert.match(await page.textContent("#reserve .groupe[data-groupe='lettres']"), /26 cartes · en réserve/);
+  assert.equal(await page.evaluate(() => Object.values(Stockage.etat.cards).filter((c) => c.type === "letter" && !c.suspended).length), 0);
+  await page.click("#reserve .groupe[data-groupe='lettres'] button");
+  assert.equal(await page.evaluate(() => Object.values(Stockage.etat.cards).filter((c) => c.type === "letter" && c.suspended).length), 0);
+  assert.match(await page.textContent("#reserve .groupe[data-groupe='lettres']"), /en séance/);
+  assert.match(await page.textContent("#reserve .groupe[data-groupe='lettres'] button"), /Mettre en réserve/);
+  // La suspension d'un mois posée depuis la fiche n'est pas une mise en réserve.
+  assert.equal(await page.evaluate(() => Stockage.etat.cards["letter-A"].suspended_until), null);
+
+  // Tableau de bord : un enfant à la fois, jamais côte à côte.
   await page.click("[data-onglet='tableau']");
-  assert.equal(await page.locator(".carte-stats").count(), 2);
+  assert.equal(await page.locator(".carte-stats").count(), 1);
   assert.match(await page.textContent(".carte-stats[data-deck='deck-1'] h3"), /Adam/);
+  assert.equal(await page.getAttribute("#tableau-enfant button[data-deck='deck-1']", "aria-checked"), "true");
+  await page.click("#tableau-enfant button[data-deck='deck-2']");
+  assert.equal(await page.locator(".carte-stats").count(), 1);
+  assert.equal(await page.locator(".carte-stats[data-deck='deck-2']").count(), 1);
+  assert.equal(await page.getAttribute("#tableau-enfant button[data-deck='deck-2']", "aria-checked"), "true");
+  assert.deepEqual(erreurs, []);
+
+  // Sur l'écran du mode : le filtre Lettres apparaît maintenant que les lettres
+  // sont réveillées ; Chiffres aussi (1 à 3 sont en séance dès le départ).
+  await page.click("#parent-fermer");
+  await page.waitForSelector("#vue-depart:not([hidden])");
+  assert.equal(await page.isVisible("#filtre button[data-filtre='lettres']"), true);
+  assert.equal(await page.isVisible("#filtre button[data-filtre='nombres']"), true);
+  await page.click("#filtre button[data-filtre='lettres']");
+  assert.match(await page.textContent("#mode-info"), /3 cartes/);
+  await contexte.close();
+});
+
+test("réserve : sans lettres actives, pas de filtre Lettres ; une installation d'avant la réserve y passe ses cartes jamais vues", async () => {
+  const { page, contexte, erreurs } = await ouvrirAvecEnfants("/flashcards/index.html");
+  assert.equal(await page.isVisible("#filtre button[data-filtre='lettres']"), false);
+  assert.equal(await page.isVisible("#filtre button[data-filtre='nombres']"), true, "les chiffres 1 à 3 sont en séance");
+  assert.equal(await page.isVisible("#filtre button[data-filtre='tout']"), true);
+
+  // Une base d'avant la réserve : tout actif, la lettre A déjà montrée.
+  await page.evaluate(async () => {
+    const etat = Stockage.etat;
+    delete etat.migrations;
+    for (const c of Object.values(etat.cards)) c.suspended = false;
+    etat.reviews["r-a"] = { id: "r-a", session_id: "s", deck_id: "deck-1", card_id: "letter-A", grade: "knew", mode: "show", at: Date.now() };
+    Stockage.enregistrerPaquet(etat.decks["deck-1"]);
+    await new Promise((ok) => setTimeout(ok, 100));
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  const apres = await page.evaluate(() => ({
+    a: Stockage.etat.cards["letter-A"].suspended,
+    b: Stockage.etat.cards["letter-B"].suspended,
+    rouge: Stockage.etat.cards["word-rouge"].suspended,
+    chien: Stockage.etat.cards["word-chien"].suspended,
+    quatre: Stockage.etat.cards["number-4"].suspended,
+    trois: Stockage.etat.cards["number-3"].suspended,
+    fait: Stockage.etat.migrations.reserve,
+  }));
+  assert.deepEqual(apres, { a: false, b: true, rouge: true, chien: false, quatre: true, trois: false, fait: true }, "déjà vue : reste ; jamais vue : en réserve");
+  // Le filtre Lettres est là : A est active.
+  assert.equal(await page.isVisible("#filtre button[data-filtre='lettres']"), true);
   assert.deepEqual(erreurs, []);
   await contexte.close();
 });
@@ -572,9 +686,18 @@ test("sauvegarde : exporter sur la tablette, importer sur un autre appareil, tou
   await Promise.all([a.contexte.close(), b.contexte.close(), c.contexte.close()]);
 });
 
-test("rappel de sauvegarde au départ, seulement quand il y a des progrès à perdre", async () => {
+test("au départ : les photos d'abord, puis le rappel de sauvegarde seulement quand il y a des progrès à perdre", async () => {
   const { page, contexte } = await ouvrirAvecEnfants("/flashcards/index.html");
-  assert.equal((await page.textContent("#statut-depart")).trim(), "", "rien à perdre, pas de rappel");
+  // Paquet neuf, que des emoji : on commence par des photos de la maison.
+  assert.match(await page.textContent("#statut-depart"), /photos de la maison/);
+  await page.evaluate(async () => {
+    const photo = await Stockage.ajouterMedia(new Blob([new Uint8Array([1, 2, 3])], { type: "image/webp" }));
+    Stockage.enregistrerCarte({ id: "doudou", type: "word", label: "doudou", category: "objet", extras: {}, source: "photo", note: "",
+      created_at: Date.now(), suspended: false, suspended_until: null, images: [{ id: "i", media: photo, emoji: null, is_primary: true, order: 0 }] }, ["deck-1"]);
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  assert.equal((await page.textContent("#statut-depart")).trim(), "", "une photo, rien à perdre : pas de rappel");
   await page.evaluate(() => {
     Stockage.ajouterRevue({ id: "r", session_id: "s", deck_id: "deck-1", card_id: "word-chien", grade: "knew", mode: "show", at: Date.now() });
   });
@@ -593,6 +716,7 @@ test("police emoji embarquée : chargée en COLRv1, et elle couvre chaque emoji 
   const { charger } = require("./charger");
   const emojis = new Set();
   for (const [e] of Graines.MOTS) emojis.add(e);
+  for (const l of Object.values(Graines.IMAGES_COULEURS)) for (const e of l) emojis.add(e);
   for (const [, , e] of Graines.LETTRES) emojis.add(e);
   for (const [, , objets] of Graines.NOMBRES) for (const e of objets) emojis.add(e);
   for (const n of charger().NOTIONS) emojis.add(n[0]);

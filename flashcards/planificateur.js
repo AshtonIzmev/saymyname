@@ -18,13 +18,20 @@
   // chaque séance ; la boîte 5 (« maîtrisée ») sert surtout de distracteur.
   const INTERVALLES = { 1: 0, 2: 1, 3: 3, 4: 7, 5: 21 };
   const NOTES = ["knew", "hesitant", "didnt_know"];
-  const PLAFOND_DEFAUT = 10;
+  // Six au départ : une séance de cinq minutes, qu'on quitte en en voulant
+  // encore. Le parent monte quand les séances finissent toujours au plafond.
+  const PLAFOND_DEFAUT = 6;
   const PLAFOND_MIN = 6;
   const PLAFOND_MAX = 15;
   const NOUVELLES_MAX = 3;
   const SERIE_BOITE_5 = 3; // trois « su » d'affilée en boîte 4 → boîte 5
   const SEUIL_SANGSUE = 4; // quatre échecs d'affilée en boîte 1 → signalée, et au repos
   const REPOS_JOURS = 7;   // une carte signalée se repose une semaine avant de revenir
+  // Le mode choisir (deux images, note automatique) ne fait pas monter une
+  // carte au-delà de cette boîte : une chance sur deux au hasard, et un
+  // enfant qui sait que l'autre image n'est pas « chien » réussit par
+  // exclusion. « Connu » (boîtes 4 et 5) reste une note du parent, en montrer.
+  const PLAFOND_CHOIX = 3;
 
   function debutDuJour(t) {
     const d = new Date(t);
@@ -65,14 +72,22 @@
   // zéro à chaque changement de boîte et à chaque note qui n'est pas « su ».
   // C'est ce qui rend lisible la règle « trois fois de suite en boîte 4 ».
   // `fail_count` compte les échecs d'affilée (remis à zéro par un « su »).
-  function noter(entree, note, maintenant) {
+  // options.mode : « show » (défaut) ou « choice ».
+  function noter(entree, note, maintenant, options) {
     if (!NOTES.includes(note)) throw new Error("Note inconnue : " + note);
+    const enChoix = !!(options && options.mode === "choice");
     const n = Object.assign({}, entree, {
       reviews: (entree.reviews || 0) + 1,
       last_seen_at: maintenant,
       updated_at: maintenant,
     });
-    if (note === "knew") {
+    if (note === "knew" && enChoix && entree.box >= PLAFOND_CHOIX) {
+      // Réussite en choisir, au plafond du mode : la carte reste où elle est,
+      // revue à l'échéance de sa boîte ; la série vers la boîte 5 ne bouge pas.
+      n.fail_count = 0;
+      n.rest_until = null;
+      n.due_at = echeance(entree.box, maintenant);
+    } else if (note === "knew") {
       n.fail_count = 0;
       n.rest_until = null;
       if (entree.box < 4) {
@@ -183,8 +198,10 @@
   //      Jamais une carte au repos (quatrième échec, ou décision du parent).
   //   4. Au plus 50 % de lettres + chiffres, sauf séance lettres ou chiffres.
   //   5. Mélange, jamais deux fois le même mot à la suite.
+  // En mode choisir (options.mode = "choice"), jamais une carte jamais vue :
+  // un mot est d'abord donné par une voix, en montrer, avant d'être demandé.
   function choisirSession(cartes, entrees, options) {
-    const o = Object.assign({ cap: PLAFOND_DEFAUT, maxNouvelles: NOUVELLES_MAX, filtre: "tout", alea: Math.random }, options);
+    const o = Object.assign({ cap: PLAFOND_DEFAUT, maxNouvelles: NOUVELLES_MAX, filtre: "tout", mode: "show", alea: Math.random }, options);
     const maintenant = o.maintenant != null ? o.maintenant : Date.now();
     if (o.cap <= 0) return [];
 
@@ -192,6 +209,7 @@
     for (const e of entrees) {
       const c = cartes[e.card_id];
       if (!c || estSuspendue(c, maintenant) || enRepos(e, maintenant) || !correspondFiltre(c, o.filtre)) continue;
+      if (o.mode === "choice" && !(e.reviews > 0)) continue;
       eligibles.push([e, c]);
     }
     const dues = eligibles
@@ -271,7 +289,7 @@
   }
 
   return {
-    JOUR, INTERVALLES, NOTES, PLAFOND_DEFAUT, PLAFOND_MIN, PLAFOND_MAX, NOUVELLES_MAX, SEUIL_SANGSUE, REPOS_JOURS,
+    JOUR, INTERVALLES, NOTES, PLAFOND_DEFAUT, PLAFOND_MIN, PLAFOND_MAX, NOUVELLES_MAX, SEUIL_SANGSUE, REPOS_JOURS, PLAFOND_CHOIX,
     debutDuJour, echeance, nouvelleEntree, estDue, estSuspendue, enRepos, noter, estSangsue,
     motCle, categorie, melanger, choisirSession, choisirDistracteur, choisirImage,
     restantAujourdhui, noteChoix,

@@ -459,6 +459,12 @@ validerNotions(NOTIONS);
     // liseuse expose une API constructeur, l'assigner à motAMot.rafraichirDalle.
     flashAntiGhosting: false,
     flashToutesLes: 8,
+    // L'enfant peut taper un coin lui-même (c'est même le but : désigner).
+    // Entre deux navigations au doigt, un temps mort : un tapotement en
+    // rafale ne fait défiler que la première image, et la dalle e-ink a le
+    // temps de se redessiner. Les boutons de la barre et le clavier ne sont
+    // pas concernés. 0 pour désactiver.
+    attenteEntreNavigations: 1500,
   };
 
   const plateau = document.getElementById("plateau");
@@ -494,6 +500,7 @@ validerNotions(NOTIONS);
   let etat = null;
   const historique = [];
   let navigations = 0;
+  let derniereNavigationAuDoigt = -Infinity;
 
   function afficher(forme, notion) {
     const el = noeuds.get(notion[1]);
@@ -610,6 +617,11 @@ validerNotions(NOTIONS);
       const R = cercle.getBoundingClientRect();
       const ex = e.clientX - (R.left + R.width / 2), ey = e.clientY - (R.top + R.height / 2);
       if (Math.hypot(ex, ey) > R.width / 2 + 8) return;
+      // Temps mort après une navigation au doigt : l'appui s'est inversé
+      // (l'enfant a été vu), mais le plateau ne bouge pas encore.
+      const maintenant = Date.now();
+      if (maintenant - derniereNavigationAuDoigt < CONFIG.attenteEntreNavigations) return;
+      derniereNavigationAuDoigt = maintenant;
       naviguerCoin(i);
     });
     cercle.addEventListener("pointercancel", function () { cercle.classList.remove("presse"); });

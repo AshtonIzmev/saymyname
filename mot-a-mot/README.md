@@ -2,11 +2,24 @@
 
 Un support d'attention conjointe pour un enfant de deux ans et son parent, sur
 tablette e-ink couleur. Une image au centre, ses quatre plus proches voisines aux
-coins. L'enfant nomme l'image du centre à voix haute ; le parent tape un coin ;
-ce coin devient le centre. Indéfiniment.
+coins. L'enfant nomme l'image du centre à voix haute ; **l'enfant désigne un
+coin** (« lequel tu veux ? »), le parent le tape, ou l'enfant lui-même ; ce coin
+devient le centre. Indéfiniment.
 
 L'application n'enseigne rien et ne parle pas : aucun texte sur le plateau, aucun
 son, aucun score. Elle affiche, et c'est tout.
+
+## Comment s'en servir
+
+À deux ans, pointer est le geste central de l'attention conjointe : c'est l'enfant
+qui choisit où l'on va. Le parent nomme l'image du centre si l'enfant ne la nomme
+pas, attend, puis demande « lequel tu veux ? » et tape le coin que l'enfant montre.
+Quand l'enfant tape lui-même, très bien : un **temps mort d'une seconde et demie**
+suit chaque navigation au doigt (`CONFIG.attenteEntreNavigations`, en
+millisecondes ; 0 pour le retirer). Un tapotement en rafale ne fait donc défiler
+qu'une image, l'appui s'inverse quand même (l'enfant est vu), et la dalle e-ink a le
+temps de se redessiner. Les boutons de la barre et le clavier ne sont pas
+concernés : le parent n'attend jamais.
 
 ## Lancer
 

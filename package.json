@@ -1,6 +1,6 @@
 {
   "name": "jeux-des-jumeaux",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Écran de choix du jeu, Mot à Mot (attention conjointe, e-ink) et les flashcards (Leitner, un paquet par enfant). Statique, sans serveur d'application.",
   "private": true,
   "license": "UNLICENSED",

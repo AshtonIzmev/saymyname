@@ -132,6 +132,7 @@
       zone.append(portrait(d), h("span", { class: "prenom" }, d.name),
         h("button", { type: "button", class: "bouton secondaire", id: "changer-enfant", onclick: () => ouvrirEnfants("depart") },
           paquets().length > 1 ? "Changer d'enfant" : "Enfants"));
+      rendreFiltres(d.id);
       rendreInfoMode();
     }
     afficherRappelSauvegarde();
@@ -146,16 +147,38 @@
 
   function revuesListe() { return Object.values(S.etat.reviews); }
 
+  // Les filtres Lettres et Chiffres n'apparaissent que si le paquet a des
+  // cartes actives de ce type : tant que les lettres sont en réserve, le
+  // parent ne voit qu'un seul bouton de moins, pas un bouton qui ne fait rien.
+  function rendreFiltres(deckId) {
+    const maintenant = Date.now();
+    const actives = (type) => S.entrees(deckId).some((e) => {
+      const c = carte(e.card_id);
+      return c && c.type === type && !P.estSuspendue(c, maintenant);
+    });
+    const visibles = { tout: true, lettres: actives("letter"), nombres: actives("number") };
+    if (!visibles[filtreChoisi]) filtreChoisi = "tout";
+    for (const b of $("filtre").querySelectorAll("button")) b.hidden = !visibles[b.dataset.filtre];
+    $("filtre").hidden = !visibles.lettres && !visibles.nombres;
+  }
+
   function rendreInfoMode() {
     const d = actif();
     if (!d) return;
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, Date.now());
     const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi });
+    const enChoix = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, mode: "choice" });
     $("mode-info").textContent = restant === 0
       ? "Plafond du jour atteint (" + d.daily_cap + " cartes)."
       : file.length === 0
         ? "Rien à montrer aujourd'hui : tout est vu, suspendu ou au repos."
         : file.length + " carte" + (file.length > 1 ? "s" : "") + " pour cette séance.";
+    // Choisir ne demande que ce qui a déjà été donné en montrer : tant qu'il
+    // n'y a rien de tel, la tuile le dit et ne fait rien.
+    const choisir = $("mode-choisir");
+    const rienAChoisir = restant > 0 && enChoix.length === 0;
+    choisir.disabled = rienAChoisir;
+    choisir.querySelector(".tuile-sous").textContent = rienAChoisir ? "d'abord Montrer" : "« où est… ? »";
     for (const b of $("filtre").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.filtre === filtreChoisi));
   }
 
@@ -246,10 +269,13 @@
     const p = S.etat.decks[id];
     if (!p) return;
     if (!confirm("Retirer " + p.name + " ? Ses progrès (boîtes, séances, révisions) et sa photo seront effacés de cet appareil. Les cartes restent.")) return;
-    await S.retirerPaquet(id);
+    // L'état est à jour dès l'appel ; l'écriture sur l'appareil suit. L'écran
+    // se redessine tout de suite, sans attendre le disque.
+    const ecriture = S.retirerPaquet(id);
     message($("enfants-message"), "Le paquet de " + p.name + " est effacé.");
     rendreEnfants();
     remplirFiltres();
+    await ecriture;
   }
 
   // ======================================================================
@@ -265,7 +291,7 @@
     if (!d) return;
     const maintenant = Date.now();
     const restant = P.restantAujourdhui(revuesListe(), d.id, d.daily_cap, maintenant);
-    const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, maintenant });
+    const file = P.choisirSession(S.etat.cards, S.entrees(d.id), { cap: restant, filtre: filtreChoisi, mode, maintenant });
     // Rien à montrer : on le dit et on reste là. Pas de « fini » verrouillé
     // trente secondes pour un appui de trop sur une tuile.
     if (file.length === 0) { rendreInfoMode(); return; }
@@ -317,6 +343,30 @@
     return h("div", { class: "etiquette" }, motSouligne(c.label));
   }
 
+  // ---------- Le souffleur ----------
+  const CLE_SOUFFLEUR = "flashcards.souffleur";
+  function souffleurActif() { try { return localStorage.getItem(CLE_SOUFFLEUR) !== "0"; } catch (_) { return true; } }
+  function reglerSouffleur(actif) { try { localStorage.setItem(CLE_SOUFFLEUR, actif ? "1" : "0"); } catch (_) {} }
+
+  // En mode choisir, le mot à demander s'affiche toujours : sans lui, le
+  // parent ne sait pas laquelle des deux images est la cible. Le reste
+  // (nouveau / revu, relance, note de la carte) suit le réglage.
+  function rendreSouffleur(c, entree, enChoix) {
+    const el = $("souffleur");
+    el.textContent = "";
+    const s = Souffleur.souffler(c, entree, enChoix ? "choice" : "show");
+    const morceaux = [];
+    if (enChoix) morceaux.push(h("b", null, s.cible));
+    if (souffleurActif() || enChoix) morceaux.push(s.phase);
+    if (souffleurActif()) {
+      // En choisir, le mot et la consigne suffisent : la ligne reste courte.
+      if (s.relance && !enChoix) morceaux.push(s.relance);
+      if (s.note) morceaux.push(s.note);
+    }
+    morceaux.forEach((m, i) => { if (i) el.append(" · "); el.append(m); });
+    el.hidden = morceaux.length === 0;
+  }
+
   function montrerCarte() {
     const c = carteCourante();
     const scene = $("scene");
@@ -325,6 +375,7 @@
     seance.essai = { touchers: 0, trouve: false, auto: null, bloque: false, distracteur: null, cote: 0 };
 
     const distracteur = seance.distracteurs[seance.i] || null;
+    rendreSouffleur(c, entree, !!distracteur);
     if (!distracteur) {
       // Mode montrer (ou pas de distracteur possible pour cette carte).
       scene.className = "scene montrer";
@@ -371,7 +422,7 @@
     const e = seance.essai;
     const maintenant = Date.now();
     const avant = S.entree(seance.deck, c.id) || P.nouvelleEntree(seance.deck, c.id, maintenant);
-    S.enregistrerEntree(P.noter(avant, note, maintenant));
+    S.enregistrerEntree(P.noter(avant, note, maintenant, { mode: seance.mode }));
     S.ajouterRevue({
       id: S.nouvelId(), session_id: seance.id, deck_id: seance.deck, card_id: c.id, grade: note,
       mode: e && e.distracteur ? "choice" : "show",
@@ -728,8 +779,10 @@
     const boites = [0, 0, 0, 0, 0];
     for (const e of entrees) boites[e.box - 1]++;
     const revues = revuesListe().filter((r) => r.deck_id === deckId);
+    // Un mot « dit » : le premier « su » noté par le parent en montrer. Une
+    // réussite en choisir n'en est pas un (une chance sur deux au hasard).
     const premierSu = {};
-    for (const r of revues) if (r.grade === "knew" && (!premierSu[r.card_id] || r.at < premierSu[r.card_id])) premierSu[r.card_id] = r.at;
+    for (const r of revues) if (r.grade === "knew" && r.mode === "show" && (!premierSu[r.card_id] || r.at < premierSu[r.card_id])) premierSu[r.card_id] = r.at;
     const seances = Object.values(S.etat.sessions).filter((s) => s.deck_id === deckId && s.started_at >= semaine && s.ended_at);
     const duree = seances.length ? seances.reduce((t, s) => t + (s.ended_at - s.started_at), 0) / seances.length : 0;
     return {
@@ -745,19 +798,31 @@
     };
   }
 
+  // Un enfant à la fois : « jamais comparé » vaut aussi pour le parent. Deux
+  // colonnes côte à côte invitaient à mesurer l'écart tous les soirs ; un
+  // décalage entre jumeaux est fréquent et normal.
+  let enfantTableau = null;
+
   function rendreTableau() {
     const zone = $("onglet-tableau");
     zone.textContent = "";
-    const colonnes = h("div", { class: "cote-a-cote" });
-    for (const p of paquets()) {
+    const liste = paquets();
+    if (!liste.some((p) => p.id === enfantTableau)) enfantTableau = liste.length ? liste[0].id : null;
+    const choix = h("div", { class: "segments", id: "tableau-enfant", role: "radiogroup", "aria-label": "Enfant" });
+    for (const p of liste)
+      choix.append(h("button", { type: "button", role: "radio", "data-deck": p.id, "aria-checked": String(p.id === enfantTableau),
+        onclick: () => { enfantTableau = p.id; rendreTableau(); } }, p.name));
+    zone.append(choix);
+    for (const p of liste) {
+      if (p.id !== enfantTableau) continue;
       const s = statistiques(p.id);
       const minutes = s.duree ? Math.round(s.duree / 6000) / 10 + " min" : "—";
-      colonnes.append(h("div", { class: "carte-stats", "data-deck": p.id },
+      zone.append(h("div", { class: "carte-stats", "data-deck": p.id },
         h("h3", null, p.name),
         h("div", { class: "boites" }, s.boites.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, "boîte " + (i + 1))))),
         h("dl", { class: "chiffres" },
           h("dt", null, "Boîtes 4–5 (connues)"), h("dd", null, String(s.connues)),
-          h("dt", null, "Nouveaux mots reconnus (7 j)"), h("dd", null, String(s.nouveauxMots)),
+          h("dt", null, "Nouveaux mots dits (7 j)"), h("dd", null, String(s.nouveauxMots)),
           h("dt", null, "Jamais montrées"), h("dd", null, String(s.jamais)),
           h("dt", null, "Séances (7 j)"), h("dd", null, String(s.seances)),
           h("dt", null, "Durée moyenne"), h("dd", null, minutes),
@@ -768,7 +833,6 @@
             carte(e.card_id).label + (P.estSangsue(e) ? " (signalée)" : "")))))
           : h("p", { class: "discret" }, "Aucune.")));
     }
-    zone.append(colonnes);
     zone.append(h("p", { class: "discret" }, "Si les séances finissent toujours par le parent, le plafond est trop haut. Changer un réglage à la fois."));
   }
 
@@ -777,8 +841,37 @@
   // ======================================================================
 
   function rendreReglages() {
+    $("souffleur-actif").checked = souffleurActif();
+    rendreReserve();
     cochesPaquets($("import-paquets"), "import");
     afficherDerniereSauvegarde();
+  }
+
+  // La réserve, par groupe : un bouton réveille tout le groupe (ou l'y remet).
+  // Réveiller ne touche pas à une suspension d'un mois posée depuis la fiche.
+  function rendreReserve() {
+    const zone = $("reserve");
+    zone.textContent = "";
+    for (const [groupe, nom] of Object.entries(Graines.RESERVE)) {
+      const cartes = Object.values(S.etat.cards).filter((c) => Graines.groupeReserve(c) === groupe);
+      if (!cartes.length) continue;
+      const dormantes = cartes.filter((c) => c.suspended);
+      const enReserve = dormantes.length > 0;
+      const basculer = () => {
+        const maintenant = Date.now();
+        for (const c of enReserve ? dormantes : cartes) {
+          c.suspended = !enReserve;
+          c.updated_at = maintenant;
+          S.enregistrerCarte(c, []);
+        }
+        rendreReserve();
+      };
+      zone.append(h("div", { class: "groupe", "data-groupe": groupe },
+        h("div", null, nom, h("small", null, cartes.length + " carte" + (cartes.length > 1 ? "s" : "") +
+          (enReserve ? (dormantes.length < cartes.length ? " · " + dormantes.length + " en réserve" : " · en réserve") : " · en séance"))),
+        h("button", { type: "button", class: "bouton" + (enReserve ? "" : " secondaire"), onclick: basculer },
+          enReserve ? "Réveiller" : "Mettre en réserve")));
+    }
   }
 
   // ======================================================================
@@ -813,9 +906,14 @@
     const t = derniereSauvegarde();
     const progres = Object.keys(S.etat.reviews).length > 0;
     const jours = t ? Math.floor((Date.now() - t) / P.JOUR) : Infinity;
-    statut.textContent = progres && jours >= CONFIG.rappelSauvegarde
-      ? (t ? "Dernière sauvegarde il y a " + jours + " jours" : "Aucune sauvegarde") + " : Parent → Réglages → Exporter."
-      : "";
+    if (progres && jours >= CONFIG.rappelSauvegarde) {
+      statut.textContent = (t ? "Dernière sauvegarde il y a " + jours + " jours" : "Aucune sauvegarde") + " : Parent → Réglages → Exporter.";
+      return;
+    }
+    // Tant qu'aucune carte n'a de photo : à deux ans, un référent réel et
+    // personnel vaut dix dessins. Les emoji attendent, les photos d'abord.
+    const photos = Object.values(S.etat.cards).some((c) => (c.images || []).some((im) => im.media));
+    statut.textContent = photos ? "" : "Pour commencer : une vingtaine de photos de la maison, Parent → Ajouter.";
   }
 
   async function exporterSauvegarde() {
@@ -956,6 +1054,7 @@
     for (const id of ["filtre-type", "filtre-boite", "filtre-source", "filtre-etat"]) $(id).addEventListener("change", rendreCartes);
     $("filtre-texte").addEventListener("input", rendreCartes);
 
+    $("souffleur-actif").addEventListener("change", (ev) => reglerSouffleur(ev.target.checked));
     $("exporter").addEventListener("click", exporterSauvegarde);
     $("importer-sauvegarde").addEventListener("change", (ev) => { importerSauvegarde(ev.target.files[0]); ev.target.value = ""; });
     $("import-dossier").addEventListener("change", (ev) => importer(ev.target.files));

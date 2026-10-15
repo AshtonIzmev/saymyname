@@ -14,12 +14,33 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 - Un paquet par enfant, jamais partagé, jamais comparé. Un enfant seul, des
   jumeaux, une fratrie : autant d'enfants qu'on veut, un seul actif à la fois.
 
+## Commencer
+
+Y aller doucement. La première semaine :
+
+1. **Vingt photos de la maison**, avant tout : le doudou, la tasse de l'enfant, le
+   chien de la voisine, la voiture de papa, la porte, la cuillère. *Parent →
+   Ajouter*, moins de trente secondes par carte. À deux ans, un référent réel et
+   personnel vaut dix dessins ; les emoji semés attendent, en réserve de fait, les
+   mots qu'on ne peut pas photographier. Le départ le rappelle d'une ligne tant
+   qu'aucune carte n'a de photo.
+2. **Montrer seulement.** *Choisir* s'ouvre de lui-même quand des mots auront été
+   donnés (voir plus bas).
+3. **Une séance par jour**, courte : le plafond est à 6 cartes au départ, soit
+   cinq minutes. Monter à 8, puis 10, quand les séances finissent toujours au
+   plafond et que les enfants en redemandent, ce que le tableau (*fin : plafond /
+   parent*) permet de voir. Un réglage à la fois.
+4. **Les lettres, couleurs, formes et chiffres 4–5 restent en réserve** (voir *Jeu
+   de départ*) : rien à faire, c'est le réglage de départ.
+
 ## Une séance
 
 1. **Départ** : l'enfant actif en tête (photo et prénom), *Changer d'enfant* pour
    en prendre un autre (voir *Les enfants*).
-2. **Mode** : *Montrer* ou *Choisir*, juste dessous. Au-dessus, *Tout / Lettres / Chiffres*.
-3. C'est parti. La séance s'arrête au plafond du jour (10 cartes par défaut, 6 à 15)
+2. **Mode** : *Montrer* ou *Choisir*, juste dessous. Au-dessus, *Tout / Lettres /
+   Chiffres* ; un filtre n'apparaît que si l'enfant a des cartes actives de ce type
+   (au départ, seulement *Chiffres*, pour 1 à 3).
+3. C'est parti. La séance s'arrête au plafond du jour (6 cartes par défaut, 6 à 15)
    ou par un appui long du parent, à deux doigts. L'écran affiche « fini » et reste
    verrouillé 30 secondes. Il vaut mieux qu'ils en redemandent. S'il n'y a rien à
    montrer (plafond atteint, tout vu, tout au repos), le départ le dit et
@@ -31,7 +52,8 @@ L'écran *Enfants* (bouton *Changer d'enfant* / *Enfants* du départ, ou
 *Parent → Réglages → Gérer les enfants*) :
 
 - **Ajouter un enfant** : un prénom suffit. Il reçoit toutes les cartes de
-  l'appareil en boîte 1, et commence comme un paquet neuf (trois mots).
+  l'appareil en boîte 1 (celles en réserve restent en réserve), un plafond de 6
+  cartes par jour, et commence comme un paquet neuf (trois mots).
 - **Choisir** l'enfant actif : c'est sa séance qui part du départ. Retenu sur
   l'appareil, d'une ouverture à l'autre.
 - Pour chacun : **prénom**, **photo** (toucher le rond), **cartes par jour**.
@@ -52,7 +74,8 @@ La carte ne change jamais toute seule.
 
 ### Choisir (réceptif)
 
-Deux images côte à côte, sans mot. Le parent demande « où est… ? ». L'enfant touche :
+Deux images côte à côte, sans mot. Le parent demande « où est… ? » (le souffleur
+lui donne le mot). L'enfant touche :
 
 - **juste** : l'autre image s'efface, le mot apparaît sous la cible ;
 - **faux** : rien pendant une seconde, puis il peut réessayer.
@@ -63,6 +86,35 @@ catégorie (un animal contre un objet, jamais chat contre chien), de préférenc
 carte que l'enfant connaît déjà (boîte 3+). Il ne compte jamais comme révisé. Les
 distracteurs de toute la séance sont tirés au départ, et leurs images résolues
 avec les autres : aucune image n'arrive en retard sur l'écran de l'enfant.
+
+*Choisir* vient **après** *Montrer*, et ne décide pas qu'un mot est connu :
+
+- il ne propose que des cartes déjà vues au moins une fois : un mot est d'abord
+  donné par une voix avant d'être demandé. Sur un paquet neuf, la tuile est grisée
+  (« d'abord Montrer ») ;
+- une réussite en *Choisir* fait monter une carte jusqu'à la boîte 3, pas au-delà.
+  Deux images, c'est une chance sur deux au hasard, et un enfant qui sait que
+  l'autre image n'est pas « chien » réussit par exclusion. *Connu* (boîtes 4 et 5)
+  reste une note du parent, en *Montrer*. Les échecs, eux, comptent comme les
+  autres : deux erreurs sur deux images, c'est un signal.
+
+Ce que *Choisir* mesure, c'est de la compréhension ; traitez-le comme un jeu, et le
+tableau de bord comme le reflet de *Montrer*.
+
+### Le souffleur
+
+Ce qui enseigne, c'est la voix du parent ; la carte ne fait que choisir le mot.
+Une ligne grise au ras du bas de l'écran, que l'enfant ne lit pas, dit au parent
+la seule chose qu'il ne voit pas : si le mot est **nouveau** (« dis le mot, montre,
+redis-le ») ou **déjà vu** (« demande “c'est quoi ?”, attends trois secondes, puis
+dis-le »). Suit une relance par catégorie, pour en parler plutôt que passer à la
+suivante : le bruit qu'il fait, où on l'a vu, tu aimes ?, montre le tien. La note
+de la carte, s'il y en a une, vient en dernier.
+
+En mode *Choisir*, la ligne commence par **le mot à demander** : sans lui, le
+parent ne saurait pas laquelle des deux images est la cible. Ce mot reste affiché
+même souffleur éteint (*Parent → Réglages → Souffleur*). Les textes sont dans
+`souffleur.js`, testés dans `test/souffleur.test.js`.
 
 ### Les gestes du parent
 
@@ -97,11 +149,15 @@ Tout se fait sur la tablette : elle a l'appareil photo.
   ajouter une), mot, paquets, suspendre (un mois ou
   indéfiniment, pour tous les enfants), **reposer un mois pour un seul enfant**
   (ou le réveiller), historique des révisions.
-- **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
-  reconnus en 7 jours, jamais montrées, séances, durée moyenne, fin par plafond ou
-  par le parent, cartes en échec 3 fois de suite.
-- **Réglages** : *Gérer les enfants* (l'écran *Enfants*) ; **sauvegarde**
-  (exporter, importer) ; images en masse.
+- **Tableau** : un enfant à la fois (on choisit lequel en haut), jamais côte à côte :
+  « jamais comparé » vaut aussi pour le parent, et un décalage entre enfants du même
+  âge est fréquent et normal. Cartes par boîte, boîtes 4–5, nouveaux mots dits en
+  7 jours (premier *su* en *Montrer* ; une réussite en *Choisir* n'en est pas un),
+  jamais montrées, séances, durée moyenne, fin par plafond ou par le parent, cartes
+  en échec 3 fois de suite.
+- **Réglages** : *Gérer les enfants* (l'écran *Enfants*) ; **souffleur** ; **en
+  réserve** (voir *Jeu de départ*) ; **sauvegarde** (exporter, importer) ; images en
+  masse.
 
 ### Import en masse
 
@@ -136,6 +192,10 @@ toute façon à chaque séance, tandis qu'un enfant qui rate beaucoup ne verrait
 sinon plus jamais rien de nouveau et tournerait sur les mêmes dix cartes pendant
 des mois. Un paquet tout neuf ouvre donc sur trois mots, pas sur A, B, C.
 
+En mode *Choisir*, la sélection écarte les cartes jamais vues et un *su* ne fait
+pas monter au-delà de la boîte 3 (`PLAFOND_CHOIX`) : à ce plafond, la carte reste
+dans sa boîte et sera revue à son échéance ; la série vers la boîte 5 ne bouge pas.
+
 Une carte *su* trois fois de suite en boîte 4 passe en boîte 5. Une carte ratée 4
 fois de suite en boîte 1 est **signalée** et **se repose une semaine** : on ne
 drille pas un enfant de deux ans sur ce qu'il rate, on y revient plus tard. Elle
@@ -166,6 +226,26 @@ Semés une fois sur l'appareil, puis donnés à chaque enfant ajouté. Les emoji
 dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une image).
 `H` (muet en français) et `X` (pas d'emoji xylophone) portent une note. `W` a
 « wapiti », l'un des rares mots français en /w/ (« wagon » se dit /v/).
+
+### En réserve
+
+Tout n'est pas montré à deux ans. Quatre groupes sont semés **suspendus** : ils sont
+dans *Cartes*, pas dans les séances, jusqu'à ce que le parent les réveille dans
+*Parent → Réglages → En réserve*, un groupe à la fois, d'un bouton (et les y remette
+de même).
+
+| Groupe | Pourquoi attendre |
+| --- | --- |
+| Les lettres (26) | La conscience des sons vient vers quatre ou cinq ans. Et C, K, Q donnent tous /k/, G se nomme « gé » mais sonne /g/ : il faudra d'abord trancher entre nom et son. |
+| Les couleurs (8) | Mot abstrait, acquis plus tard, et un rond rouge pour « rouge » se confond avec un rond rouge pour « rond ». |
+| Les formes (5) | Même confusion dans l'autre sens : un carré bleu pour « carré » peut s'apprendre comme « bleu ». |
+| Les chiffres 4 et 5 | Un enfant de deux ans perçoit d'un coup d'œil jusqu'à trois. 1, 2 et 3 restent en séance. |
+
+Une centaine de mots concrets, c'est déjà des mois. Le groupe vaut pour toutes les
+cartes, celles du parent comprises : réveiller les couleurs réveille aussi une couleur
+qu'il aurait ajoutée. Une installation d'avant cette règle passe en réserve, une
+fois, les cartes de ces groupes que les enfants n'ont jamais vues ; ce qui a déjà été
+montré reste en séance.
 
 Les emoji sont dessinés par la police embarquée (`polices/`, voir le README
 à la racine), pas par celle de la tablette : les mêmes images partout. Un emoji
@@ -221,6 +301,8 @@ copie locale sert au bout de 3 secondes.
 
 ## Choix faits là où le cahier des charges laissait de la marge
 
+- **Plafond à 6 au départ**, pas 10 : on y va doucement, et il vaut mieux qu'ils
+  en redemandent. Le réglage va de 6 à 15, par enfant.
 - **Deux doigts pour le parent.** Le cahier des charges voulait des gestes
   invisibles des enfants ; invisibles ne suffisait pas, un doigt qui traîne
   notait. À deux doigts, un enfant de deux ans ne note rien par accident.
@@ -230,7 +312,9 @@ copie locale sert au bout de 3 secondes.
 - **Mots avant lettres** à date d'ajout égale, pour qu'un paquet neuf n'ouvre
   pas sur l'alphabet.
 - **Glisser ↓** en mode *Choisir* : il fallait un geste pour « passer en gardant
-  la note automatique » ; les trois autres directions la remplacent.
+  la note automatique » ; les trois autres directions la remplacent. Un glissement
+  du parent en *Choisir* reste une note de *Choisir* : plafonnée à la boîte 3, même
+  si c'est lui qui a jugé. Pour faire passer un mot en *connu*, c'est *Montrer*.
 - **Boîte 5 due** (après 21 jours) : revue après les boîtes 2–4, pour ne pas
   disparaître pour toujours.
 - **Série vers la boîte 5** : `streak` compte les *su* d'affilée dans la boîte
@@ -252,5 +336,6 @@ Limites connues, laissées telles quelles pour l'instant :
 - le mode *Choisir* à deux images laisse une chance sur deux au hasard, et le
   distracteur est toujours d'une autre catégorie : trois images et des
   distracteurs plus proches à mesure que la carte monte sont la suite logique ;
-- l'application ne dit rien au parent de ce qu'il pourrait dire (quel son pour
-  une lettre, quelle question) : c'est le README qui le fait, ou personne.
+- le souffleur dit au parent *quand* donner le mot et quand le demander, et une
+  relance par catégorie ; il ne tranche pas, pour une lettre, entre le nom et le
+  son : c'est au parent de choisir, et de s'y tenir.

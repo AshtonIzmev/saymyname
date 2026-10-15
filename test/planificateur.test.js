@@ -47,6 +47,35 @@ test("boîte 5 : trois « su » d'affilée en boîte 4, et un hésitant remet le
   e = P.noter(e, "knew", MIDI); assert.equal(e.box, 5, "la boîte 5 est la dernière");
 });
 
+test("mode choisir : jamais une carte jamais vue, et un « su » ne monte pas au-delà de la boîte 3", () => {
+  // Sélection : la jamais vue attend d'avoir été donnée en montrer.
+  const cartes = indexer([mot("neuve", "a"), mot("vue", "b"), mot("due", "c")]);
+  const entrees = [entree("neuve"), entree("vue", { box: 1, reviews: 1, last_seen_at: MIDI - J }), entree("due", { box: 2, due_at: MIDI - J, reviews: 1 })];
+  assert.deepEqual(P.choisirSession(cartes, entrees, { cap: 10, mode: "choice", maintenant: MIDI, alea: alea(1) }).map((c) => c.id).sort(), ["due", "vue"]);
+  assert.deepEqual(P.choisirSession(cartes, entrees, { cap: 10, maintenant: MIDI, alea: alea(1) }).map((c) => c.id).sort(), ["due", "neuve", "vue"], "en montrer, la neuve est là");
+
+  // Notation : en choisir, su monte jusqu'à la boîte 3, puis reste.
+  let e = P.nouvelleEntree("d", "c", MIDI);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" }); assert.equal(e.box, 2);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" }); assert.equal(e.box, 3);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" });
+  assert.equal(e.box, 3, "plafond du mode choisir");
+  assert.equal(e.due_at, P.debutDuJour(MIDI) + 3 * J, "revue à l'échéance de sa boîte");
+  assert.equal(e.reviews, 3);
+  e = P.noter(e, "knew", MIDI, { mode: "show" }); assert.equal(e.box, 4, "le parent, en montrer, fait passer en connu");
+  // En boîte 4, une réussite en choisir ne compte pas dans la série vers la 5.
+  e = P.noter(e, "knew", MIDI, { mode: "show" }); assert.deepEqual([e.box, e.streak], [4, 1]);
+  e = P.noter(e, "knew", MIDI, { mode: "choice" }); assert.deepEqual([e.box, e.streak], [4, 1]);
+  e = P.noter(e, "knew", MIDI, { mode: "show" });
+  e = P.noter(e, "knew", MIDI, { mode: "show" }); assert.equal(e.box, 5);
+  // Les échecs en choisir comptent comme les autres.
+  e = P.noter(e, "didnt_know", MIDI, { mode: "choice" }); assert.deepEqual([e.box, e.fail_count], [1, 1]);
+  // Une réussite en choisir efface quand même une série d'échecs et un repos.
+  let f = Object.assign(entree("x", { box: 3, reviews: 5, fail_count: 2 }), { rest_until: MIDI + J });
+  f = P.noter(f, "knew", MIDI, { mode: "choice" });
+  assert.deepEqual([f.box, f.fail_count, f.rest_until], [3, 0, null]);
+});
+
 test("sangsue : quatre échecs d'affilée en boîte 1, effacés par un « su »", () => {
   let e = P.nouvelleEntree("d", "c", MIDI);
   for (let i = 0; i < 3; i++) e = P.noter(e, "didnt_know", MIDI);
@@ -101,9 +130,35 @@ test("sélection : un paquet tout neuf ouvre sur des mots, jamais sur A, B, C", 
     for (const c of file) { assert.equal(c.type, "word", "graine " + g + " : " + c.id); premieres.add(c.id); }
   }
   assert.ok(premieres.size > 10, "à date égale, le hasard ordonne les mots, pas l'alphabet : " + [...premieres]);
-  // Séance « lettres » : les lettres, évidemment.
+  // Séance « lettres » : rien tant que les lettres sont en réserve ; les
+  // lettres, évidemment, une fois réveillées.
+  assert.equal(P.choisirSession(cartes, entrees, { cap: 10, filtre: "lettres", maintenant: MIDI, alea: alea(1) }).length, 0);
+  for (const c of Object.values(cartes)) if (c.type === "letter") c.suspended = false;
   const lettres = P.choisirSession(cartes, entrees, { cap: 10, filtre: "lettres", maintenant: MIDI, alea: alea(1) });
   assert.ok(lettres.length === 3 && lettres.every((c) => c.type === "letter"));
+});
+
+test("réserve : lettres, couleurs, formes et chiffres 4–5 sont semés suspendus ; les mots concrets et 1–3 en séance", () => {
+  const cartes = Graines.cartesDeDepart();
+  const groupes = {};
+  for (const c of cartes) {
+    const g = Graines.groupeReserve(c);
+    assert.equal(c.suspended, g !== null, c.id + " : suspendue ↔ en réserve");
+    if (g) { assert.ok(Graines.RESERVE[g], "groupe connu : " + g); groupes[g] = (groupes[g] || 0) + 1; }
+  }
+  assert.deepEqual(groupes, { lettres: 26, couleurs: 8, formes: 5, "grands-nombres": 2 });
+  for (const n of [1, 2, 3]) assert.equal(cartes.find((c) => c.id === "number-" + n).suspended, false);
+  assert.ok(cartes.filter((c) => c.type === "word" && !c.suspended).length >= 90, "au moins 90 mots concrets en séance");
+  // Le groupe vaut aussi pour une carte du parent.
+  assert.equal(Graines.groupeReserve({ type: "word", category: "couleur" }), "couleurs");
+  assert.equal(Graines.groupeReserve({ type: "word", category: "animal" }), null);
+  assert.equal(Graines.groupeReserve({ type: "number", extras: { digit: 3 } }), null);
+  // En trente séances, jamais une carte de la réserve.
+  const index = Object.fromEntries(cartes.map((c) => [c.id, c]));
+  const entrees = cartes.map((c) => P.nouvelleEntree("d", c.id, 0));
+  for (let g = 1; g <= 30; g++)
+    for (const c of P.choisirSession(index, entrees, { cap: 15, maintenant: MIDI + g * J, alea: alea(g) }))
+      assert.equal(Graines.groupeReserve(c), null, "en réserve mais en séance : " + c.id);
 });
 
 test("repos : au quatrième échec la carte se repose une semaine, hors séance et hors distracteur ; un « su » efface tout", () => {
@@ -258,4 +313,10 @@ test("jeu de départ : identifiants uniques, minuscules, 26 lettres, chiffres 1 
   }
   assert.deepEqual(cartes.filter((c) => c.type === "number").map((c) => c.extras.digit), [1, 2, 3, 4, 5]);
   for (const c of cartes.filter((x) => x.type === "number")) assert.ok(c.images.length >= 3, "objets variés : " + c.id);
+  // Les couleurs : le rond d'abord, puis des objets de la même couleur.
+  for (const c of mots.filter((x) => x.category === "couleur")) {
+    assert.ok(c.images.length >= 2, "objets de la couleur : " + c.id);
+    assert.equal(c.images[0].is_primary, true);
+    assert.ok(Object.keys(Graines.IMAGES_COULEURS).some((m) => m.replace(/\s*\(.*\)$/, "") === c.label), "couleur sans objets : " + c.label);
+  }
 });

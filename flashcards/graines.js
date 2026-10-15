@@ -17,6 +17,32 @@
   };
   const SOURCES = { photo: "Photo", multipic: "MultiPic", boss: "BOSS", emoji: "Emoji", ia: "IA" };
 
+  // La réserve : ce qu'on ne montre pas à deux ans, et qui attend que le
+  // parent le réveille (Parent → Réglages → En réserve). Les lettres sont
+  // prématurées (la conscience des sons vient vers quatre ou cinq ans), les
+  // couleurs et les formes en emoji se confondent (un rond rouge pour
+  // « rond », un rond rouge pour « rouge »), et un enfant de deux ans perçoit
+  // d'un coup d'œil jusqu'à trois. Cent mots concrets suffisent pour des mois.
+  const RESERVE = {
+    lettres: "Les lettres",
+    couleurs: "Les couleurs",
+    formes: "Les formes",
+    "grands-nombres": "Les chiffres 4 et 5",
+  };
+  const CHIFFRE_MAX_DEPART = 3;
+
+  // Le groupe de réserve d'une carte, ou null. Vaut pour toutes les cartes,
+  // pas seulement les graines : « réveiller les couleurs » réveille aussi la
+  // couleur ajoutée par le parent.
+  function groupeReserve(carte) {
+    if (!carte) return null;
+    if (carte.type === "letter") return "lettres";
+    if (carte.type === "number") return (carte.extras && carte.extras.digit) > CHIFFRE_MAX_DEPART ? "grands-nombres" : null;
+    if (carte.category === "couleur") return "couleurs";
+    if (carte.category === "forme") return "formes";
+    return null;
+  }
+
   // [ emoji, mot (minuscules), catégorie ]
   const MOTS = [
     ["🐕", "chien", "animal"],
@@ -139,6 +165,23 @@
     ["❤️", "cœur", "forme"],
   ];
 
+  // Les couleurs : le rond de couleur reste l'image principale (« rouge »,
+  // c'est cette couleur), puis, à partir de la boîte 3, des objets de la même
+  // couleur à tour de rôle, pour que le mot s'attache à la couleur et non au
+  // rond. Emoji déjà dans la police embarquée, et dont le rendu Noto est
+  // franchement de cette couleur (vérifié à l'écran : pas le manteau, pas
+  // l'œuf, pas le pingouin).
+  const IMAGES_COULEURS = {
+    rouge: ["🍎", "🍓", "🚗"],
+    bleu: ["👖", "🪣", "🧢"],
+    jaune: ["🍌", "🐥", "☀️"],
+    vert: ["🥦", "🐸", "🐢"],
+    "orange (couleur)": ["🍊", "🥕", "🦊"],
+    violet: ["🍆", "🍇"],
+    noir: ["🎩"],
+    blanc: ["🐑", "🥛"],
+  };
+
   // [ lettre, mot compagnon, emoji ]
   // Premier son sans ambiguïté en français : ni « ch », ni « ph », ni h muet.
   // « wagon » se dit /v/ : W a « wapiti », un des rares mots en /w/.
@@ -195,12 +238,15 @@
   }
 
   function carte(id, type, label, category, extras, emojis, note) {
-    return {
+    const c = {
       id, type, label, category, extras,
       source: "emoji", note: note || "", created_at: 0,
       suspended: false, suspended_until: null, updated_at: 0,
       images: emojis.map((e, i) => ({ id: id + "-img" + i, emoji: e, media: null, is_primary: i === 0, order: i })),
     };
+    // Semée, mais en réserve : présente dans Cartes, absente des séances.
+    c.suspended = groupeReserve(c) !== null;
+    return c;
   }
 
   function cartesDeDepart() {
@@ -208,7 +254,7 @@
     for (const [emoji, mot, cat] of MOTS) {
       // « orange (couleur) » : la précision sert au parent, pas à l'enfant.
       const label = mot.replace(/\s*\(.*\)$/, "");
-      cartes.push(carte(idDe("word", mot), "word", label, cat, {}, [emoji]));
+      cartes.push(carte(idDe("word", mot), "word", label, cat, {}, [emoji].concat(IMAGES_COULEURS[mot] || [])));
     }
     for (const [lettre, mot, emoji] of LETTRES)
       cartes.push(carte("letter-" + lettre, "letter", mot, null, { letter: lettre }, [emoji], NOTES_LETTRES[lettre]));
@@ -217,5 +263,5 @@
     return cartes;
   }
 
-  return { CATEGORIES, SOURCES, MOTS, LETTRES, NOMBRES, cartesDeDepart, idDe };
+  return { CATEGORIES, SOURCES, RESERVE, MOTS, IMAGES_COULEURS, LETTRES, NOMBRES, groupeReserve, cartesDeDepart, idDe };
 });

@@ -61,6 +61,8 @@
 <!-- ======================= L'écran de l'enfant : une chose à la fois ======== -->
 <section id="vue-enfant" class="vue enfant" hidden>
   <div id="scene"></div>
+  <!-- Le souffleur : une ligne pour le parent, que l'enfant ne lit pas. -->
+  <p id="souffleur" class="souffleur" hidden></p>
 </section>
 
 <section id="vue-fini" class="vue enfant" hidden>
@@ -145,6 +147,16 @@
       celui qui joue.</p>
     <button type="button" class="bouton" id="reglages-enfants">Gérer les enfants</button>
 
+    <h2>Souffleur</h2>
+    <label class="interrupteur"><input type="checkbox" id="souffleur-actif" checked><span>Une ligne pour le parent en bas de
+      l'écran de l'enfant : mot nouveau ou revu, et une relance.</span></label>
+    <p class="discret">En mode <em>Choisir</em>, le mot à demander reste affiché quoi qu'il arrive.</p>
+
+    <h2>En réserve</h2>
+    <p class="discret">Ce qu'on ne montre pas encore à deux ans : présent dans <em>Cartes</em>,
+      absent des séances. À réveiller quand les enfants seront prêts, un groupe à la fois.</p>
+    <div id="reserve" class="reserve"></div>
+
     <h2>Sauvegarde</h2>
     <p class="discret">Tout est enregistré sur cet appareil seulement. Exporter télécharge un
       fichier avec les cartes, les photos et les progrès des enfants : à garder
@@ -174,6 +186,7 @@
 
 <script src="planificateur.js"></script>
 <script src="graines.js"></script>
+<script src="souffleur.js"></script>
 <script src="stockage.js"></script>
 <script src="app.js"></script>
 </body>
