@@ -121,9 +121,25 @@
 
   function revuesListe() { return Object.values(S.etat.reviews); }
 
+  // Les filtres Lettres et Chiffres n'apparaissent que si le paquet a des
+  // cartes actives de ce type : tant que les lettres sont en réserve, le
+  // parent ne voit qu'un seul bouton de moins, pas un bouton qui ne fait rien.
+  function rendreFiltres(deckId) {
+    const maintenant = Date.now();
+    const actives = (type) => S.entrees(deckId).some((e) => {
+      const c = carte(e.card_id);
+      return c && c.type === type && !P.estSuspendue(c, maintenant);
+    });
+    const visibles = { tout: true, lettres: actives("letter"), nombres: actives("number") };
+    if (!visibles[filtreChoisi]) filtreChoisi = "tout";
+    for (const b of $("filtre").querySelectorAll("button")) b.hidden = !visibles[b.dataset.filtre];
+    $("filtre").hidden = !visibles.lettres && !visibles.nombres;
+  }
+
   function choisirPaquet(id) {
     paquetChoisi = id;
     $("mode-titre").textContent = S.etat.decks[id].name;
+    rendreFiltres(id);
     rendreInfoMode();
     afficherVue("vue-mode");
   }
@@ -690,8 +706,36 @@
           h("label", { class: "champ" }, h("span", null, "Prénom"), nom),
           h("label", { class: "champ" }, h("span", null, "Cartes / jour"), cap))));
     }
+    rendreReserve();
     cochesPaquets($("import-paquets"), "import");
     afficherDerniereSauvegarde();
+  }
+
+  // La réserve, par groupe : un bouton réveille tout le groupe (ou l'y remet).
+  // Réveiller ne touche pas à une suspension d'un mois posée depuis la fiche.
+  function rendreReserve() {
+    const zone = $("reserve");
+    zone.textContent = "";
+    for (const [groupe, nom] of Object.entries(Graines.RESERVE)) {
+      const cartes = Object.values(S.etat.cards).filter((c) => Graines.groupeReserve(c) === groupe);
+      if (!cartes.length) continue;
+      const dormantes = cartes.filter((c) => c.suspended);
+      const enReserve = dormantes.length > 0;
+      const basculer = () => {
+        const maintenant = Date.now();
+        for (const c of enReserve ? dormantes : cartes) {
+          c.suspended = !enReserve;
+          c.updated_at = maintenant;
+          S.enregistrerCarte(c, []);
+        }
+        rendreReserve();
+      };
+      zone.append(h("div", { class: "groupe", "data-groupe": groupe },
+        h("div", null, nom, h("small", null, cartes.length + " carte" + (cartes.length > 1 ? "s" : "") +
+          (enReserve ? (dormantes.length < cartes.length ? " · " + dormantes.length + " en réserve" : " · en réserve") : " · en séance"))),
+        h("button", { type: "button", class: "bouton" + (enReserve ? "" : " secondaire"), onclick: basculer },
+          enReserve ? "Réveiller" : "Mettre en réserve")));
+    }
   }
 
   // ======================================================================

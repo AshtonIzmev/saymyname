@@ -16,7 +16,9 @@ choisit quoi montrer et retient, pour chaque enfant, ce qu'il connaît.
 ## Une séance
 
 1. **Départ** : toucher la tuile de l'enfant (photo et prénom dans *Parent → Réglages*).
-2. **Mode** : *Montrer* ou *Choisir*. Au-dessus, *Tout / Lettres / Chiffres*.
+2. **Mode** : *Montrer* ou *Choisir*. Au-dessus, *Tout / Lettres / Chiffres* ; un
+   filtre n'apparaît que si l'enfant a des cartes actives de ce type (au départ,
+   seulement *Chiffres*, pour 1 à 3).
 3. C'est parti. La séance s'arrête au plafond du jour (10 cartes par défaut, 6 à 15)
    ou par un appui long du parent, à deux doigts. L'écran affiche « fini » et reste
    verrouillé 30 secondes. Il vaut mieux qu'ils en redemandent. S'il n'y a rien à
@@ -79,8 +81,8 @@ Tout se fait sur la tablette : elle a l'appareil photo.
 - **Tableau** : par enfant, côte à côte — cartes par boîte, boîtes 4–5, nouveaux mots
   reconnus en 7 jours, jamais montrées, séances, durée moyenne, fin par plafond ou
   par le parent, cartes en échec 3 fois de suite.
-- **Réglages** : prénom, photo et plafond de chaque enfant ; **sauvegarde**
-  (exporter, importer) ; images en masse.
+- **Réglages** : prénom, photo et plafond de chaque enfant ; **en réserve** (voir
+  *Jeu de départ*) ; **sauvegarde** (exporter, importer) ; images en masse.
 
 ### Import en masse
 
@@ -145,6 +147,26 @@ dans les deux paquets. Les emoji sont des remplaçants : les photos du parent et
 dessins MultiPic / BOSS les remplacent au fil de l'eau (fiche → ajouter une image).
 `H` (muet en français) et `X` (pas d'emoji xylophone) portent une note. `W` a
 « wapiti », l'un des rares mots français en /w/ (« wagon » se dit /v/).
+
+### En réserve
+
+Tout n'est pas montré à deux ans. Quatre groupes sont semés **suspendus** : ils sont
+dans *Cartes*, pas dans les séances, jusqu'à ce que le parent les réveille dans
+*Parent → Réglages → En réserve*, un groupe à la fois, d'un bouton (et les y remette
+de même).
+
+| Groupe | Pourquoi attendre |
+| --- | --- |
+| Les lettres (26) | La conscience des sons vient vers quatre ou cinq ans. Et C, K, Q donnent tous /k/, G se nomme « gé » mais sonne /g/ : il faudra d'abord trancher entre nom et son. |
+| Les couleurs (8) | Mot abstrait, acquis plus tard, et un rond rouge pour « rouge » se confond avec un rond rouge pour « rond ». |
+| Les formes (5) | Même confusion dans l'autre sens : un carré bleu pour « carré » peut s'apprendre comme « bleu ». |
+| Les chiffres 4 et 5 | Un enfant de deux ans perçoit d'un coup d'œil jusqu'à trois. 1, 2 et 3 restent en séance. |
+
+Une centaine de mots concrets, c'est déjà des mois. Le groupe vaut pour toutes les
+cartes, celles du parent comprises : réveiller les couleurs réveille aussi une couleur
+qu'il aurait ajoutée. Une installation d'avant cette règle passe en réserve, une
+fois, les cartes de ces groupes que les enfants n'ont jamais vues ; ce qui a déjà été
+montré reste en séance.
 
 Les emoji sont dessinés par la police embarquée (`polices/`, voir le README
 à la racine), pas par celle de la tablette : les mêmes images partout. Un emoji

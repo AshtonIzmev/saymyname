@@ -300,10 +300,65 @@ test("parent : import en masse, réglages, tableau de bord", async () => {
   }, tonton.images[0].media);
   assert.deepEqual(recadree, ["image/webp", 30, 30]);
 
+  // La réserve : les lettres dorment, un bouton les réveille, un autre les y remet.
+  assert.deepEqual(await page.$$eval("#reserve .groupe", (gs) => gs.map((g) => g.dataset.groupe)), ["lettres", "couleurs", "formes", "grands-nombres"]);
+  assert.match(await page.textContent("#reserve .groupe[data-groupe='lettres']"), /26 cartes · en réserve/);
+  assert.equal(await page.evaluate(() => Object.values(Stockage.etat.cards).filter((c) => c.type === "letter" && !c.suspended).length), 0);
+  await page.click("#reserve .groupe[data-groupe='lettres'] button");
+  assert.equal(await page.evaluate(() => Object.values(Stockage.etat.cards).filter((c) => c.type === "letter" && c.suspended).length), 0);
+  assert.match(await page.textContent("#reserve .groupe[data-groupe='lettres']"), /en séance/);
+  assert.match(await page.textContent("#reserve .groupe[data-groupe='lettres'] button"), /Mettre en réserve/);
+  // La suspension d'un mois posée depuis la fiche n'est pas une mise en réserve.
+  assert.equal(await page.evaluate(() => Stockage.etat.cards["letter-A"].suspended_until), null);
+
   // Tableau de bord : les deux enfants côte à côte.
   await page.click("[data-onglet='tableau']");
   assert.equal(await page.locator(".carte-stats").count(), 2);
   assert.match(await page.textContent(".carte-stats[data-deck='deck-1'] h3"), /Adam/);
+  assert.deepEqual(erreurs, []);
+
+  // Sur l'écran du mode : le filtre Lettres apparaît maintenant que les lettres
+  // sont réveillées ; Chiffres aussi (1 à 3 sont en séance dès le départ).
+  await page.click("#parent-fermer");
+  await page.locator(".jumeau").nth(0).click();
+  assert.equal(await page.isVisible("#filtre button[data-filtre='lettres']"), true);
+  assert.equal(await page.isVisible("#filtre button[data-filtre='nombres']"), true);
+  await page.click("#filtre button[data-filtre='lettres']");
+  assert.match(await page.textContent("#mode-info"), /3 cartes/);
+  await contexte.close();
+});
+
+test("réserve : sans lettres actives, pas de filtre Lettres ; une installation d'avant la réserve y passe ses cartes jamais vues", async () => {
+  const { page, contexte, erreurs } = await ouvrir("/flashcards/index.html");
+  await page.locator(".jumeau").nth(0).click();
+  assert.equal(await page.isVisible("#filtre button[data-filtre='lettres']"), false);
+  assert.equal(await page.isVisible("#filtre button[data-filtre='nombres']"), true, "les chiffres 1 à 3 sont en séance");
+  assert.equal(await page.isVisible("#filtre button[data-filtre='tout']"), true);
+
+  // Une base d'avant la réserve : tout actif, la lettre A déjà montrée.
+  await page.evaluate(async () => {
+    const etat = Stockage.etat;
+    delete etat.migrations;
+    for (const c of Object.values(etat.cards)) c.suspended = false;
+    etat.reviews["r-a"] = { id: "r-a", session_id: "s", deck_id: "deck-1", card_id: "letter-A", grade: "knew", mode: "show", at: Date.now() };
+    Stockage.enregistrerPaquet(etat.decks["deck-1"]);
+    await new Promise((ok) => setTimeout(ok, 100));
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.flashcards && window.flashcards.pret);
+  const apres = await page.evaluate(() => ({
+    a: Stockage.etat.cards["letter-A"].suspended,
+    b: Stockage.etat.cards["letter-B"].suspended,
+    rouge: Stockage.etat.cards["word-rouge"].suspended,
+    chien: Stockage.etat.cards["word-chien"].suspended,
+    quatre: Stockage.etat.cards["number-4"].suspended,
+    trois: Stockage.etat.cards["number-3"].suspended,
+    fait: Stockage.etat.migrations.reserve,
+  }));
+  assert.deepEqual(apres, { a: false, b: true, rouge: true, chien: false, quatre: true, trois: false, fait: true }, "déjà vue : reste ; jamais vue : en réserve");
+  // Le filtre Lettres est là : A est active.
+  await page.locator(".jumeau").nth(0).click();
+  assert.equal(await page.isVisible("#filtre button[data-filtre='lettres']"), true);
   assert.deepEqual(erreurs, []);
   await contexte.close();
 });

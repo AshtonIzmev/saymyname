@@ -92,15 +92,34 @@
     return { modifie, medias };
   }
 
+  // Une installation d'avant la réserve : les lettres, couleurs, formes et
+  // chiffres 4–5 que les enfants n'ont jamais vus passent en réserve, comme
+  // sur une installation neuve. Ce qui a déjà été montré reste tel quel. Fait
+  // une fois ; le parent réveille ensuite ce qu'il veut depuis les réglages.
+  function mettreEnReserve() {
+    if (etat.migrations && etat.migrations.reserve) return false;
+    const vues = new Set(Object.values(etat.reviews).map((r) => r.card_id));
+    let modifie = false;
+    for (const c of Object.values(etat.cards)) {
+      if (c.suspended || vues.has(c.id) || !Graines.groupeReserve(c)) continue;
+      c.suspended = true;
+      modifie = true;
+    }
+    etat.migrations = Object.assign({}, etat.migrations, { reserve: true });
+    return modifie;
+  }
+
   async function charger() {
     db = await ouvrirBase();
     etat = db ? await requete(magasin("etat", "readonly").get("etat")).catch(() => null) : null;
     if (!etat) {
       etat = etatVide();
       semer();
+      etat.migrations = { reserve: true };
       await sauver();
-    } else if ((await retirerAnciensSons()).modifie) {
-      await sauver();
+    } else {
+      const sons = (await retirerAnciensSons()).modifie;
+      if (mettreEnReserve() || sons || !(etat.migrations && etat.migrations.reserve)) await sauver();
     }
     // Demander au navigateur de ne pas effacer ces données pour faire de la
     // place : c'est le seul exemplaire, en dehors des sauvegardes.
@@ -247,7 +266,9 @@
     urls.clear();
     etat = etatVide();
     for (const sorte of SORTES) Object.assign(etat[sorte], s.etat[sorte]);
+    if (s.etat.migrations) etat.migrations = s.etat.migrations;
     const { medias: sons } = await retirerAnciensSons();
+    mettreEnReserve();
     await sauver();
     return {
       cartes: Object.keys(etat.cards).length,

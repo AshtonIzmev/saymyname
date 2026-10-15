@@ -17,6 +17,32 @@
   };
   const SOURCES = { photo: "Photo", multipic: "MultiPic", boss: "BOSS", emoji: "Emoji", ia: "IA" };
 
+  // La réserve : ce qu'on ne montre pas à deux ans, et qui attend que le
+  // parent le réveille (Parent → Réglages → En réserve). Les lettres sont
+  // prématurées (la conscience des sons vient vers quatre ou cinq ans), les
+  // couleurs et les formes en emoji se confondent (un rond rouge pour
+  // « rond », un rond rouge pour « rouge »), et un enfant de deux ans perçoit
+  // d'un coup d'œil jusqu'à trois. Cent mots concrets suffisent pour des mois.
+  const RESERVE = {
+    lettres: "Les lettres",
+    couleurs: "Les couleurs",
+    formes: "Les formes",
+    "grands-nombres": "Les chiffres 4 et 5",
+  };
+  const CHIFFRE_MAX_DEPART = 3;
+
+  // Le groupe de réserve d'une carte, ou null. Vaut pour toutes les cartes,
+  // pas seulement les graines : « réveiller les couleurs » réveille aussi la
+  // couleur ajoutée par le parent.
+  function groupeReserve(carte) {
+    if (!carte) return null;
+    if (carte.type === "letter") return "lettres";
+    if (carte.type === "number") return (carte.extras && carte.extras.digit) > CHIFFRE_MAX_DEPART ? "grands-nombres" : null;
+    if (carte.category === "couleur") return "couleurs";
+    if (carte.category === "forme") return "formes";
+    return null;
+  }
+
   // [ emoji, mot (minuscules), catégorie ]
   const MOTS = [
     ["🐕", "chien", "animal"],
@@ -195,12 +221,15 @@
   }
 
   function carte(id, type, label, category, extras, emojis, note) {
-    return {
+    const c = {
       id, type, label, category, extras,
       source: "emoji", note: note || "", created_at: 0,
       suspended: false, suspended_until: null, updated_at: 0,
       images: emojis.map((e, i) => ({ id: id + "-img" + i, emoji: e, media: null, is_primary: i === 0, order: i })),
     };
+    // Semée, mais en réserve : présente dans Cartes, absente des séances.
+    c.suspended = groupeReserve(c) !== null;
+    return c;
   }
 
   function cartesDeDepart() {
@@ -224,5 +253,5 @@
     ];
   }
 
-  return { CATEGORIES, SOURCES, MOTS, LETTRES, NOMBRES, cartesDeDepart, paquetsDeDepart, idDe };
+  return { CATEGORIES, SOURCES, RESERVE, MOTS, LETTRES, NOMBRES, groupeReserve, cartesDeDepart, paquetsDeDepart, idDe };
 });

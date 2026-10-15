@@ -241,6 +241,10 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .mini-liste { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
 .mini-liste button { font: inherit; color: var(--accent); background: none; border: 0; padding: 2px 0; cursor: pointer; text-align: left; }
 
+.reserve { display: flex; flex-direction: column; gap: 8px; }
+.reserve .groupe { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; border: 1px solid var(--trait); border-radius: 12px; padding: 8px 12px; background: var(--fond); }
+.reserve .groupe small { display: block; color: var(--discret); font-size: 13px; }
+
 .paquet-reglage { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; background: var(--fond); }
 .paquet-reglage .portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: var(--doux); display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; }
 .paquet-reglage .portrait img { width: 100%; height: 100%; object-fit: cover; }
