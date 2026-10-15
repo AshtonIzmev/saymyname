@@ -54,10 +54,17 @@
   function magasin(nom, mode) { return db.transaction(nom, mode).objectStore(nom); }
 
   let ecriture = Promise.resolve();
+  // La dernière écriture refusée (stockage plein, base fermée…). L'état en
+  // mémoire reste juste, l'appareil ne le garde plus : l'application le dit
+  // au départ, au lieu de laisser le parent noter dans le vide pendant des
+  // semaines.
+  let derniereErreur = null;
   function sauver() {
     if (!db) return Promise.resolve();
     // Les écritures s'enchaînent : la dernière gagne toujours.
-    ecriture = ecriture.then(() => requete(magasin("etat", "readwrite").put(etat, "etat"))).catch(() => {});
+    ecriture = ecriture
+      .then(() => requete(magasin("etat", "readwrite").put(etat, "etat")))
+      .then(() => { derniereErreur = null; }, (e) => { derniereErreur = e || new Error("écriture refusée"); });
     return ecriture;
   }
 
@@ -253,6 +260,10 @@
   racine.Stockage = {
     charger, nouvelId, cleEntree,
     get etat() { return etat; },
+    // Faux quand IndexedDB est indisponible : tout vit en mémoire, rien ne
+    // survit à la fermeture.
+    get persistant() { return !!db; },
+    get derniereErreur() { return derniereErreur; },
     enregistrerCarte, enregistrerPaquet, enregistrerEntree, enregistrerSession, ajouterRevue,
     entrees, entree, ajouterMedia, lireMedia, urlMedia, urlMediaConnue, mettreMedia,
     exporter, importer,

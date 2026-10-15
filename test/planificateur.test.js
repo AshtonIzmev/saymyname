@@ -58,7 +58,7 @@ test("sangsue : quatre échecs d'affilée en boîte 1, effacés par un « su »"
   assert.equal(P.estSangsue(e), false);
 });
 
-test("sélection : dues des boîtes 2–4 d'abord (la plus ancienne en tête), puis ratées, puis au plus 3 nouvelles", () => {
+test("sélection : dues des boîtes 2–4 d'abord (la plus ancienne en tête), puis au plus 3 nouvelles, puis les ratées", () => {
   const cartes = [];
   const entrees = [];
   const ajouter = (id, cat, champs) => { cartes.push(mot(id, cat)); entrees.push(entree(id, champs)); };
@@ -76,11 +76,83 @@ test("sélection : dues des boîtes 2–4 d'abord (la plus ancienne en tête), p
   assert.equal(ids.filter((i) => i.startsWith("neuve")).length, 3, "au plus trois nouvelles");
   assert.equal(ids.length, 6);
 
-  // Plafond serré : les dues passent avant les ratées, qui passent avant les nouvelles.
+  // Plafond serré : les dues d'abord, puis du nouveau, et les ratées en dernier.
+  // Une ratée revient de toute façon à chaque séance ; une nouvelle, elle,
+  // n'arriverait jamais si les ratées passaient devant.
   const serre = P.choisirSession(indexer(cartes), entrees, { cap: 2, maintenant: MIDI, alea: alea(2) }).map((c) => c.id).sort();
   assert.deepEqual(serre, ["due-recente", "due-vieille"]);
-  const trois = P.choisirSession(indexer(cartes), entrees, { cap: 3, maintenant: MIDI, alea: alea(3) }).map((c) => c.id).sort();
-  assert.deepEqual(trois, ["due-recente", "due-vieille", "ratee"]);
+  const trois = P.choisirSession(indexer(cartes), entrees, { cap: 3, maintenant: MIDI, alea: alea(3) }).map((c) => c.id);
+  assert.deepEqual(trois.filter((i) => i.startsWith("due")).sort(), ["due-recente", "due-vieille"]);
+  assert.equal(trois.filter((i) => i.startsWith("neuve")).length, 1);
+  const cinq = P.choisirSession(indexer(cartes), entrees, { cap: 5, maintenant: MIDI, alea: alea(3) }).map((c) => c.id);
+  assert.equal(cinq.filter((i) => i.startsWith("neuve")).length, 3);
+  assert.ok(!cinq.includes("ratee"));
+  const six = P.choisirSession(indexer(cartes), entrees, { cap: 6, maintenant: MIDI, alea: alea(3) }).map((c) => c.id);
+  assert.ok(six.includes("ratee"));
+});
+
+test("sélection : un paquet tout neuf ouvre sur des mots, jamais sur A, B, C", () => {
+  const cartes = indexer(Graines.cartesDeDepart());
+  const entrees = Object.keys(cartes).map((id) => P.nouvelleEntree("d", id, 0));
+  const premieres = new Set();
+  for (let g = 1; g <= 30; g++) {
+    const file = P.choisirSession(cartes, entrees, { cap: 10, maintenant: MIDI, alea: alea(g) });
+    assert.equal(file.length, 3);
+    for (const c of file) { assert.equal(c.type, "word", "graine " + g + " : " + c.id); premieres.add(c.id); }
+  }
+  assert.ok(premieres.size > 10, "à date égale, le hasard ordonne les mots, pas l'alphabet : " + [...premieres]);
+  // Séance « lettres » : les lettres, évidemment.
+  const lettres = P.choisirSession(cartes, entrees, { cap: 10, filtre: "lettres", maintenant: MIDI, alea: alea(1) });
+  assert.ok(lettres.length === 3 && lettres.every((c) => c.type === "letter"));
+});
+
+test("repos : au quatrième échec la carte se repose une semaine, hors séance et hors distracteur ; un « su » efface tout", () => {
+  const cartes = indexer([mot("a", "x"), mot("b", "y"), mot("c", "z")]);
+  let e = P.nouvelleEntree("d", "a", MIDI);
+  for (let i = 0; i < 3; i++) e = P.noter(e, "didnt_know", MIDI);
+  assert.equal(P.enRepos(e, MIDI), false, "trois échecs : pas encore");
+  e = P.noter(e, "didnt_know", MIDI);
+  assert.equal(P.estSangsue(e), true);
+  assert.equal(e.rest_until, P.debutDuJour(MIDI) + P.REPOS_JOURS * J);
+  assert.equal(P.enRepos(e, MIDI), true);
+  assert.equal(P.enRepos(e, MIDI + 8 * J), false, "revenue après une semaine");
+  const entrees = [e, entree("b", { box: 3, reviews: 3 }), entree("c")];
+  assert.deepEqual(P.choisirSession(cartes, entrees, { cap: 10, maintenant: MIDI, alea: alea(1) }).map((c) => c.id).sort(), ["b", "c"], "a est au repos");
+  assert.equal(P.choisirDistracteur(cartes.c, cartes, entrees, { maintenant: MIDI, alea: alea(1) }).id, "b", "jamais une carte au repos en distracteur");
+  assert.equal(P.choisirSession(cartes, entrees, { cap: 10, maintenant: MIDI + 8 * J, alea: alea(1) }).some((c) => c.id === "a"), true);
+  e = P.noter(e, "knew", MIDI + 8 * J);
+  assert.deepEqual([e.rest_until, e.fail_count, P.estSangsue(e)], [null, 0, false]);
+  // Le repos posé par le parent (un mois) suit la même règle.
+  const posee = Object.assign(entree("c"), { rest_until: MIDI + 30 * J });
+  assert.equal(P.enRepos(posee, MIDI + 29 * J), true);
+  assert.equal(P.enRepos(posee, MIDI + 31 * J), false);
+});
+
+test("un enfant qui rate beaucoup voit quand même du nouveau chaque jour, et une carte signalée ne revient qu'une fois par semaine", () => {
+  // Trente jours, une séance par jour, plafond 10, un enfant qui ne sait que 25 %.
+  const r = alea(42);
+  const cartes = indexer(Graines.cartesDeDepart());
+  const entrees = {};
+  for (const id of Object.keys(cartes)) entrees[id] = P.nouvelleEntree("d", id, 0);
+  const revues = [];
+  const vues = new Set();
+  const derniereSignalee = {};
+  for (let jour = 0; jour < 30; jour++) {
+    const now = MIDI + jour * J;
+    const file = P.choisirSession(cartes, Object.values(entrees), { cap: P.restantAujourdhui(revues, "d", 10, now), maintenant: now, alea: r });
+    assert.ok(file.some((c) => !(entrees[c.id].reviews > 0)), "jour " + (jour + 1) + " : aucune carte nouvelle");
+    for (const c of file) {
+      if (P.estSangsue(entrees[c.id])) {
+        if (derniereSignalee[c.id] != null) assert.ok(jour - derniereSignalee[c.id] >= P.REPOS_JOURS, c.id + " revient avant une semaine");
+        derniereSignalee[c.id] = jour;
+      }
+      vues.add(c.id);
+      const x = r();
+      entrees[c.id] = P.noter(entrees[c.id], x < 0.25 ? "knew" : x < 0.4 ? "hesitant" : "didnt_know", now);
+      revues.push({ deck_id: "d", at: now });
+    }
+  }
+  assert.ok(vues.size >= 60, "en trente jours, au moins soixante cartes distinctes, trouvé " + vues.size);
 });
 
 test("sélection : la carte ajoutée le plus récemment passe en tête des nouvelles", () => {

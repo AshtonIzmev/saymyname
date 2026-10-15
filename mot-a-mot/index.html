@@ -19,16 +19,22 @@
      rester carrée en portrait. Exprimé en unités de fenêtre plutôt qu'en unités
      de conteneur pour tourner sur les WebView anciennes des liseuses. */
   --cote: min(calc(100vw * 1.6 / 3.6), calc((100vh - var(--barre)) / 2));
+  /* Papier : un blanc cassé chaud avec un grain léger, pour les écrans
+     rétroéclairés où le blanc pur fatigue. La dalle e-ink, elle, n'éblouit
+     pas et ne sait pas rendre un grain (elle le tramerait en bruit) : en
+     mode e-ink, blanc pur et aplat, comme avant. */
+  --papier: #f6f1e7;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.28 0 0 0 0 0.16 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 /* L'aperçu e-ink épaissit les fils : c'est ce que fait, en pratique, la dalle. */
-html.eink { --fil: 3px; }
+html.eink { --fil: 3px; --papier: #fff; --grain: none; }
 
 html, body {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #fff;
+  background: var(--papier);
   color: #000;
   touch-action: manipulation;
   user-select: none;
@@ -53,7 +59,7 @@ body {
   grid-template-rows: 1fr 2fr 1fr;
   /* Fond posé ici et non hérité du body : le voile de l'aperçu e-ink se mélange
      avec le contenu de ce groupe isolé, il lui faut donc un fond opaque. */
-  background: #fff;
+  background: var(--grain) var(--papier);
   isolation: isolate;
 }
 #fils {
@@ -90,7 +96,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  /* Même papier, même grain que le plateau : la forme n'a pas de bord visible.
+     Un fond opaque reste nécessaire au voile d'inversion de l'appui. */
+  background: var(--grain) var(--papier);
   border: 0;
 }
 /* Aucun cadre, ni au centre ni aux coins : les images seules, la grande au
@@ -172,7 +180,7 @@ html.eink #plateau::after {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: #fff;
+  background: var(--papier);
 }
 #barre button {
   font: inherit;
