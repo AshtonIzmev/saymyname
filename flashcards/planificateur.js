@@ -18,7 +18,9 @@
   // chaque séance ; la boîte 5 (« maîtrisée ») sert surtout de distracteur.
   const INTERVALLES = { 1: 0, 2: 1, 3: 3, 4: 7, 5: 21 };
   const NOTES = ["knew", "hesitant", "didnt_know"];
-  const PLAFOND_DEFAUT = 10;
+  // Six au départ : une séance de cinq minutes, qu'on quitte en en voulant
+  // encore. Le parent monte quand les séances finissent toujours au plafond.
+  const PLAFOND_DEFAUT = 6;
   const PLAFOND_MIN = 6;
   const PLAFOND_MAX = 15;
   const NOUVELLES_MAX = 3;

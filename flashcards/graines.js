@@ -265,8 +265,8 @@
 
   function paquetsDeDepart() {
     return [
-      { id: "deck-1", name: "Jumeau 1", photo: null, daily_cap: 10, updated_at: 0 },
-      { id: "deck-2", name: "Jumeau 2", photo: null, daily_cap: 10, updated_at: 0 },
+      { id: "deck-1", name: "Jumeau 1", photo: null, daily_cap: 6, updated_at: 0 },
+      { id: "deck-2", name: "Jumeau 2", photo: null, daily_cap: 6, updated_at: 0 },
     ];
   }
 

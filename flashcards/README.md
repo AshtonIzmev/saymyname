@@ -25,8 +25,10 @@ Y aller doucement. La première semaine :
    qu'aucune carte n'a de photo.
 2. **Montrer seulement.** *Choisir* s'ouvre de lui-même quand des mots auront été
    donnés (voir plus bas).
-3. **Une séance par jour**, courte. Monter le plafond quand les enfants en
-   redemandent, ce que le tableau (*fin : plafond / parent*) permet de voir.
+3. **Une séance par jour**, courte : le plafond est à 6 cartes au départ, soit
+   cinq minutes. Monter à 8, puis 10, quand les séances finissent toujours au
+   plafond et que les enfants en redemandent, ce que le tableau (*fin : plafond /
+   parent*) permet de voir. Un réglage à la fois.
 4. **Les lettres, couleurs, formes et chiffres 4–5 restent en réserve** (voir *Jeu
    de départ*) : rien à faire, c'est le réglage de départ.
 
@@ -36,7 +38,7 @@ Y aller doucement. La première semaine :
 2. **Mode** : *Montrer* ou *Choisir*. Au-dessus, *Tout / Lettres / Chiffres* ; un
    filtre n'apparaît que si l'enfant a des cartes actives de ce type (au départ,
    seulement *Chiffres*, pour 1 à 3).
-3. C'est parti. La séance s'arrête au plafond du jour (10 cartes par défaut, 6 à 15)
+3. C'est parti. La séance s'arrête au plafond du jour (6 cartes par défaut, 6 à 15)
    ou par un appui long du parent, à deux doigts. L'écran affiche « fini » et reste
    verrouillé 30 secondes. Il vaut mieux qu'ils en redemandent. S'il n'y a rien à
    montrer (plafond atteint, tout vu, tout au repos), l'écran du mode le dit et
@@ -276,6 +278,8 @@ copie locale sert au bout de 3 secondes.
 
 ## Choix faits là où le cahier des charges laissait de la marge
 
+- **Plafond à 6 au départ**, pas 10 : on y va doucement, et il vaut mieux qu'ils
+  en redemandent. Le réglage va de 6 à 15, par enfant.
 - **Deux doigts pour le parent.** Le cahier des charges voulait des gestes
   invisibles des enfants ; invisibles ne suffisait pas, un doigt qui traîne
   notait. À deux doigts, un enfant de deux ans ne note rien par accident.
